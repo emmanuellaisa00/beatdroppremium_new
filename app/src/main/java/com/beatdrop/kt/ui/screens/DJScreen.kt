@@ -46,7 +46,6 @@ fun DJScreen(vm: PlayerViewModel, onBack: () -> Unit = {}) {
 
     Column(
         Modifier.fillMaxSize()
-            .background(C.bg0)
             .statusBarsPadding().padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -89,7 +88,10 @@ private fun Deck(label: String, track: Track?, playing: Boolean, accent: Color, 
     val C = LocalAppColors.current
     val ctx = LocalContext.current
     Column(
-        modifier.clip(RoundedCornerShape(Radius.lg)).background(C.bg2).padding(12.dp),
+        modifier.clip(RoundedCornerShape(Radius.lg))
+            .background(if (C.isDark) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.5f))
+            .androidx.compose.foundation.border(0.8.dp, C.liquidGlassBorder, RoundedCornerShape(Radius.lg))
+            .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(label, color = accent, fontWeight = FontWeight.Black, fontSize = 12.sp)

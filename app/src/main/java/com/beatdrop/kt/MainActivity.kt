@@ -139,24 +139,36 @@ fun MainScaffold(vm: PlayerViewModel) {
     val pos        by vm.position.collectAsState()
     val dur        by vm.duration.collectAsState()
 
-    Surface(Modifier.fillMaxSize(), color = C.bg0) {
-        AnimatedContent(
-            targetState = currentDest,
-            transitionSpec = {
-                val isPush = targetState != Dest.Tabs && initialState == Dest.Tabs
-                if (targetState == Dest.Tabs && initialState == Dest.Tabs) {
-                    androidx.compose.animation.EnterTransition.None togetherWith
-                        androidx.compose.animation.ExitTransition.None
-                } else if (isPush) {
-                    (slideInHorizontally(tween(280)) { it } + fadeIn(tween(200))) togetherWith fadeOut(tween(120))
-                } else {
-                    fadeIn(tween(180)) togetherWith (slideOutHorizontally(tween(220)) { it } + fadeOut(tween(120)))
-                }
-            },
-            label = "screen",
-        ) { dest ->
-            Box(Modifier.fillMaxSize().background(C.bg0)) {
-                when (dest) {
+    val artColor = com.beatdrop.kt.ui.components.rememberArtworkColor(current?.artworkUri)
+    val bgColors = if (C.isDark) {
+        listOf(artColor.copy(alpha = 0.28f), Color(0xFF100E17), Color(0xFF07060A))
+    } else {
+        listOf(artColor.copy(alpha = 0.15f), Color(0xFFF9F7FC), Color(0xFFF0EDF5))
+    }
+
+    Surface(Modifier.fillMaxSize(), color = Color.Transparent) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(androidx.compose.ui.graphics.Brush.linearGradient(bgColors))
+        ) {
+            AnimatedContent(
+                targetState = currentDest,
+                transitionSpec = {
+                    val isPush = targetState != Dest.Tabs && initialState == Dest.Tabs
+                    if (targetState == Dest.Tabs && initialState == Dest.Tabs) {
+                        androidx.compose.animation.EnterTransition.None togetherWith
+                            androidx.compose.animation.ExitTransition.None
+                    } else if (isPush) {
+                        (slideInHorizontally(tween(280)) { it } + fadeIn(tween(200))) togetherWith fadeOut(tween(120))
+                    } else {
+                        fadeIn(tween(180)) togetherWith (slideOutHorizontally(tween(220)) { it } + fadeOut(tween(120)))
+                    }
+                },
+                label = "screen",
+            ) { dest ->
+                Box(Modifier.fillMaxSize().background(Color.Transparent)) {
+                    when (dest) {
                     Dest.Tabs -> TabsHost(
                         vm = vm, tab = tab, onTab = { tab = it },
                         current = current, isPlaying = isPlaying, pos = pos, dur = dur,
@@ -198,7 +210,7 @@ private fun TabsHost(
     onOpenEq: () -> Unit, onOpenManualDJ: () -> Unit,
 ) {
     val C = LocalAppColors.current
-    Box(Modifier.fillMaxSize().background(C.bg0)) {
+    Box(Modifier.fillMaxSize().background(Color.Transparent)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Box(Modifier.weight(1f)) {
                 when (tab) {

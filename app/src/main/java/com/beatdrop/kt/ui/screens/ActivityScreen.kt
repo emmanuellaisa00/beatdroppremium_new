@@ -39,7 +39,7 @@ fun ActivityScreen(
     val liked by vm.liked.collectAsState()
 
     LazyColumn(
-        Modifier.fillMaxSize().background(C.bg0),
+        Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 170.dp)
     ) {
         item {
@@ -194,7 +194,9 @@ private fun SectionHeader(t: String) {
 private fun Card(C: com.beatdrop.kt.ui.theme.AppColors, content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.lg))
-            .background(C.bg2).padding(16.dp),
+            .background(if (C.isDark) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.5f))
+            .androidx.compose.foundation.border(0.8.dp, C.liquidGlassBorder, RoundedCornerShape(Radius.lg))
+            .padding(16.dp),
         content = content,
     )
 }

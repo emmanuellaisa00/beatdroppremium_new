@@ -190,15 +190,7 @@ suspend fun getSearchSuggestions(query: String): List<String> =
 suspend fun getStreamUrl(videoId: String): String {
     getCachedUrl(videoId)?.let { return it }
 
-    // Strategy 1 — WebView extractor (Snaptube / BotGuard-immune)
-    if (YoutubeExtractor.isConfigured) {
-        try {
-            val url = YoutubeExtractor.extractStreamUrl(videoId, 14_000)
-            if (!url.isNullOrBlank()) { setCachedUrl(videoId, url); return url }
-        } catch (_: Exception) {}
-    }
-
-    // Strategy 2-4 — Innertube player API
+    // Strategy 1 — Innertube player API (Fast, Native, iOS BotGuard-immune client)
     for (client in YT_CLIENTS) {
         try {
             val body = JSONObject().apply {
@@ -230,7 +222,15 @@ suspend fun getStreamUrl(videoId: String): String {
         } catch (_: Exception) {}
     }
 
-    // Strategy 5 — Invidious
+    // Strategy 2 — WebView extractor (Snaptube / BotGuard-immune)
+    if (YoutubeExtractor.isConfigured) {
+        try {
+            val url = YoutubeExtractor.extractStreamUrl(videoId, 10_000)
+            if (!url.isNullOrBlank()) { setCachedUrl(videoId, url); return url }
+        } catch (_: Exception) {}
+    }
+
+    // Strategy 3 — Invidious fallback
     for (instance in INVIDIOUS_INSTANCES) {
         try {
             val data = okHttp.newCall(
@@ -259,50 +259,50 @@ suspend fun downloadYoutubeTrack(
     val dir = YoutubeService.downloadDir
         ?: throw Exception("External storage not available")
 
-    // Resolve stream URL (WebView first, then HTTP fallbacks)
+    // Resolve stream URL (Native Player API first, then WebView fallback)
     var streamUrl = ""
     var fileExt = "m4a"
-    if (YoutubeExtractor.isConfigured) {
+    
+    for (client in YT_CLIENTS) {
         try {
-            streamUrl = YoutubeExtractor.extractStreamUrl(result.videoId, 14_000) ?: ""
+            val body = JSONObject().apply {
+                put("videoId", result.videoId)
+                put("context", JSONObject().put("client", JSONObject().apply {
+                    put("clientName", client.clientName); put("clientVersion", client.clientVersion)
+                    put("hl", "en"); put("gl", "US")
+                    client.extraContext.keys().forEach { k -> put(k, client.extraContext.get(k)) }
+                }))
+                put("contentCheckOk", true); put("racyCheckOk", true)
+            }.toString()
+            val req = Request.Builder()
+                .url("$YT_PLAYER?key=$YT_KEY&prettyPrint=false")
+                .post(body.toRequestBody("application/json".toMediaType()))
+                .apply { client.headers.forEach { (k, v) -> header(k, v) } }
+                .header("Content-Type", "application/json")
+                .build()
+            val data = okHttp.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) null else JSONObject(resp.body!!.string())
+            } ?: continue
+            if (data.optJSONObject("playabilityStatus")?.optString("status") != "OK") continue
+            val formats = data.optJSONObject("streamingData")?.optJSONArray("adaptiveFormats")
+            val fmt = getBestAudioFormat(formats)
+            if (fmt != null) {
+                streamUrl = fmt.optString("url", "")
+                val mime = (fmt.optString("mimeType") + fmt.optString("type")).lowercase()
+                fileExt = when {
+                    mime.contains("webm") || mime.contains("opus") -> "opus"
+                    mime.contains("ogg") -> "ogg"
+                    else -> "m4a"
+                }
+                if (streamUrl.isNotBlank()) break
+            }
         } catch (_: Exception) {}
     }
-    if (streamUrl.isBlank()) {
-        for (client in YT_CLIENTS) {
-            try {
-                val body = JSONObject().apply {
-                    put("videoId", result.videoId)
-                    put("context", JSONObject().put("client", JSONObject().apply {
-                        put("clientName", client.clientName); put("clientVersion", client.clientVersion)
-                        put("hl", "en"); put("gl", "US")
-                        client.extraContext.keys().forEach { k -> put(k, client.extraContext.get(k)) }
-                    }))
-                    put("contentCheckOk", true); put("racyCheckOk", true)
-                }.toString()
-                val req = Request.Builder()
-                    .url("$YT_PLAYER?key=$YT_KEY&prettyPrint=false")
-                    .post(body.toRequestBody("application/json".toMediaType()))
-                    .apply { client.headers.forEach { (k, v) -> header(k, v) } }
-                    .header("Content-Type", "application/json")
-                    .build()
-                val data = okHttp.newCall(req).execute().use { resp ->
-                    if (!resp.isSuccessful) null else JSONObject(resp.body!!.string())
-                } ?: continue
-                if (data.optJSONObject("playabilityStatus")?.optString("status") != "OK") continue
-                val formats = data.optJSONObject("streamingData")?.optJSONArray("adaptiveFormats")
-                val fmt = getBestAudioFormat(formats)
-                if (fmt != null) {
-                    streamUrl = fmt.optString("url", "")
-                    val mime = (fmt.optString("mimeType") + fmt.optString("type")).lowercase()
-                    fileExt = when {
-                        mime.contains("webm") || mime.contains("opus") -> "opus"
-                        mime.contains("ogg") -> "ogg"
-                        else -> "m4a"
-                    }
-                    if (streamUrl.isNotBlank()) break
-                }
-            } catch (_: Exception) {}
-        }
+
+    if (streamUrl.isBlank() && YoutubeExtractor.isConfigured) {
+        try {
+            streamUrl = YoutubeExtractor.extractStreamUrl(result.videoId, 10_000) ?: ""
+        } catch (_: Exception) {}
     }
     if (streamUrl.isBlank()) streamUrl = getStreamUrl(result.videoId)
 
