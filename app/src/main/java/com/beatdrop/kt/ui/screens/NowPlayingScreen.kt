@@ -29,6 +29,7 @@ import com.beatdrop.kt.ui.theme.LocalAppColors
 import com.beatdrop.kt.ui.components.AppleLyrics
 import com.beatdrop.kt.ui.components.rememberArtworkColor
 import com.beatdrop.kt.ui.components.glassBlur
+import com.beatdrop.kt.ui.components.pressableScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.draw.alpha
@@ -319,7 +320,4 @@ fun NowPlayingScreen(vm: PlayerViewModel, onCollapse: () -> Unit, onOpenQueue: (
     }
 }
 
-private fun fmt(ms: Long): String {
-    val s = (ms / 1000).toInt()
-    return "%d:%02d".format(s / 60, s % 60)
-}
+
