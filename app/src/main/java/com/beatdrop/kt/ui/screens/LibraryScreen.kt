@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
@@ -52,7 +53,7 @@ fun LibraryScreen(
     vm: PlayerViewModel,
     onOpenAlbum: (String, String) -> Unit = { _, _ -> },
     onOpenArtist: (String) -> Unit = {},
-    onOpenSettings: () -> Unit = {},
+    onOpenLocalDiscover: () -> Unit = {},
     onOpenPlaylists: () -> Unit = {},
     onOpenStats: () -> Unit = {},
 ) {
@@ -74,7 +75,7 @@ fun LibraryScreen(
             }
             HeaderIcon(Icons.Filled.QueueMusic, "Playlists", onOpenPlaylists)
             HeaderIcon(Icons.Filled.BarChart, "Stats", onOpenStats)
-            HeaderIcon(Icons.Filled.Settings, "Settings", onOpenSettings)
+            HeaderIcon(Icons.Filled.Explore, "Discover", onOpenLocalDiscover)
         }
 
         // ── Search field ────────────────────────────────────────────────────

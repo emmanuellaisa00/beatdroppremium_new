@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
@@ -32,7 +33,7 @@ import com.beatdrop.kt.ui.theme.LocalAppColors
 import com.beatdrop.kt.ui.theme.Radius
 
 @Composable
-fun DJScreen(vm: PlayerViewModel) {
+fun DJScreen(vm: PlayerViewModel, onBack: () -> Unit = {}) {
     val C = LocalAppColors.current
     val tracks by vm.tracks.collectAsState()
     val deckA by vm.deckATrack.collectAsState()
@@ -48,7 +49,13 @@ fun DJScreen(vm: PlayerViewModel) {
             .background(C.bg0)
             .statusBarsPadding().padding(16.dp),
     ) {
-        Text("DJ Mode", color = C.text, fontWeight = FontWeight.Black, fontSize = 26.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Filled.ArrowBack, "Back", tint = C.text)
+            }
+            Spacer(Modifier.width(8.dp))
+            Text("DJ Mode", color = C.text, fontWeight = FontWeight.Black, fontSize = 26.sp)
+        }
         Spacer(Modifier.height(16.dp))
 
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

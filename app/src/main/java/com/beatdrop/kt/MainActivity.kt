@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -92,7 +93,7 @@ private val TABS = listOf(
     TabSpec("library",  "Library",  Icons.Filled.LibraryMusic),
     TabSpec("discover", "Discover", Icons.Outlined.Explore),
     TabSpec("radio",    "Radio",    Icons.Filled.Radio),
-    TabSpec("dj",       "DJ Mode",  Icons.Filled.GraphicEq),
+    TabSpec("activity", "Activity", Icons.Filled.Settings),
 )
 
 private sealed interface Dest {
@@ -103,6 +104,8 @@ private sealed interface Dest {
     data object Playlists : Dest
     data object Stats : Dest
     data object Settings : Dest
+    data object LocalDiscover : Dest
+    data object ManualDJ : Dest
     data object Eq : Dest
     data object Search : Dest
     data object NowPlaying : Dest
@@ -145,24 +148,28 @@ fun MainScaffold(vm: PlayerViewModel) {
                     Dest.Tabs -> TabsHost(
                         vm = vm, tab = tab, onTab = { tab = it },
                         current = current, isPlaying = isPlaying, pos = pos, dur = dur,
-                        onOpenAlbum      = { a, ar -> push(Dest.Album(a, ar)) },
-                        onOpenArtist     = { push(Dest.Artist(it)) },
-                        onOpenSettings   = { push(Dest.Settings) },
-                        onOpenPlaylists  = { push(Dest.Playlists) },
-                        onOpenStats      = { push(Dest.Stats) },
-                        onOpenSearch     = { push(Dest.Search) },
-                        onExpandPlayer   = { push(Dest.NowPlaying) },
+                        onOpenAlbum         = { a, ar -> push(Dest.Album(a, ar)) },
+                        onOpenArtist        = { push(Dest.Artist(it)) },
+                        onOpenLocalDiscover = { push(Dest.LocalDiscover) },
+                        onOpenPlaylists     = { push(Dest.Playlists) },
+                        onOpenStats         = { push(Dest.Stats) },
+                        onOpenSearch        = { push(Dest.Search) },
+                        onExpandPlayer      = { push(Dest.NowPlaying) },
+                        onOpenEq            = { push(Dest.Eq) },
+                        onOpenManualDJ      = { push(Dest.ManualDJ) },
                     )
-                    is Dest.Album    -> AlbumScreen(vm, dest.name, dest.artist, onBack = { pop() })
-                    is Dest.Artist   -> ArtistScreen(vm, dest.name, onBack = { pop() })
-                    is Dest.Playlist -> PlaylistDetailScreen(vm, dest.name, onBack = { pop() })
-                    Dest.Playlists   -> PlaylistsScreenHosted(vm, onBack = { pop() }, onOpen = { push(Dest.Playlist(it)) })
-                    Dest.Stats       -> StatsHosted(vm, onBack = { pop() })
-                    Dest.Settings    -> SettingsScreen(vm, onBack = { pop() }, onOpenEq = { push(Dest.Eq) })
-                    Dest.Eq          -> EqScreen(onBack = { pop() })
-                    Dest.Search      -> SearchScreen(vm)
-                    Dest.NowPlaying  -> NowPlayingScreen(vm, onCollapse = { pop() }, onOpenQueue = { push(Dest.Queue) })
-                    Dest.Queue       -> QueueScreen(vm, onClose = { pop() })
+                    is Dest.Album        -> AlbumScreen(vm, dest.name, dest.artist, onBack = { pop() })
+                    is Dest.Artist       -> ArtistScreen(vm, dest.name, onBack = { pop() })
+                    is Dest.Playlist     -> PlaylistDetailScreen(vm, dest.name, onBack = { pop() })
+                    Dest.Playlists       -> PlaylistsScreenHosted(vm, onBack = { pop() }, onOpen = { push(Dest.Playlist(it)) })
+                    Dest.Stats           -> StatsHosted(vm, onBack = { pop() })
+                    Dest.Settings        -> SettingsScreen(vm, onBack = { pop() }, onOpenEq = { push(Dest.Eq) })
+                    Dest.LocalDiscover   -> LocalDiscoverScreen(vm, onBack = { pop() }, onOpenSearch = { push(Dest.Search) })
+                    Dest.ManualDJ        -> DJScreen(vm, onBack = { pop() })
+                    Dest.Eq              -> EqScreen(onBack = { pop() })
+                    Dest.Search          -> SearchScreen(vm)
+                    Dest.NowPlaying      -> NowPlayingScreen(vm, onCollapse = { pop() }, onOpenQueue = { push(Dest.Queue) })
+                    Dest.Queue           -> QueueScreen(vm, onClose = { pop() })
                 }
             }
         }
@@ -174,8 +181,9 @@ private fun TabsHost(
     vm: PlayerViewModel, tab: String, onTab: (String) -> Unit,
     current: com.beatdrop.kt.data.Track?, isPlaying: Boolean, pos: Long, dur: Long,
     onOpenAlbum: (String, String) -> Unit, onOpenArtist: (String) -> Unit,
-    onOpenSettings: () -> Unit, onOpenPlaylists: () -> Unit,
+    onOpenLocalDiscover: () -> Unit, onOpenPlaylists: () -> Unit,
     onOpenStats: () -> Unit, onOpenSearch: () -> Unit, onExpandPlayer: () -> Unit,
+    onOpenEq: () -> Unit, onOpenManualDJ: () -> Unit,
 ) {
     val C = LocalAppColors.current
     Box(Modifier.fillMaxSize().background(C.bg0)) {
@@ -183,10 +191,10 @@ private fun TabsHost(
             Box(Modifier.weight(1f)) {
                 when (tab) {
                     "library"  -> LibraryScreen(vm, onOpenAlbum = onOpenAlbum, onOpenArtist = onOpenArtist,
-                        onOpenSettings = onOpenSettings, onOpenPlaylists = onOpenPlaylists, onOpenStats = onOpenStats)
+                        onOpenLocalDiscover = onOpenLocalDiscover, onOpenPlaylists = onOpenPlaylists, onOpenStats = onOpenStats)
                     "discover" -> DiscoverScreen(vm, onOpenSearch = onOpenSearch)
                     "radio"    -> RadioScreen(vm)
-                    "dj"       -> DJScreen(vm)
+                    "activity" -> ActivityScreen(vm, onOpenEq = onOpenEq, onOpenManualDJ = onOpenManualDJ)
                 }
             }
         }

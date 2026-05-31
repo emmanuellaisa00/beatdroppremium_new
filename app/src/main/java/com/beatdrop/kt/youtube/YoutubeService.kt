@@ -335,22 +335,23 @@ suspend fun downloadYoutubeTrack(
     }
 
     val (parsedTitle, parsedArtist) = parseTitle(result.title, result.author)
+    val meta = runCatching { enrichTrackMetadata(parsedTitle, parsedArtist) }.getOrNull()
     Track(
         id        = "dl_${result.videoId}",
         uri       = Uri.fromFile(filePath),
-        title     = parsedTitle,
-        artist    = parsedArtist,
-        album     = result.author,
+        title     = meta?.title ?: parsedTitle,
+        artist    = meta?.artist ?: parsedArtist,
+        album     = meta?.album ?: result.author,
         albumId   = 0L,
         durationMs = result.durationSecs * 1000L,
         data      = filePath.absolutePath,
         dateAdded = System.currentTimeMillis(),
-        artworkOverride = artworkPath,
+        artworkOverride = meta?.artwork ?: artworkPath,
     )
 }
 
 // ─── iTunes metadata enrichment ──────────────────────────────────────────────
-data class EnrichedMeta(val artwork: String?, val album: String?, val artist: String?)
+data class EnrichedMeta(val artwork: String?, val album: String?, val artist: String?, val title: String? = null)
 
 private val metaCache = ConcurrentHashMap<String, EnrichedMeta>()
 
@@ -376,12 +377,13 @@ suspend fun enrichTrackMetadata(title: String, artist: String): EnrichedMeta =
                     artwork = art.ifEmpty { null },
                     album   = match.optString("collectionName").ifEmpty { null },
                     artist  = match.optString("artistName").ifEmpty { null },
+                    title   = match.optString("trackName").ifEmpty { null },
                 )
                 metaCache[key] = meta
                 return@withContext meta
             }
         } catch (_: Exception) {}
-        EnrichedMeta(null, null, null).also { metaCache[key] = it }
+        EnrichedMeta(null, null, null, null).also { metaCache[key] = it }
     }
 
 // ─── Convert search result → Track (for streaming) ───────────────────────────
@@ -392,7 +394,7 @@ suspend fun youtubeResultToTrack(result: OnlineResult): Track {
     return Track(
         id        = "yt_${result.videoId}",
         uri       = Uri.parse(streamUrl),
-        title     = title,
+        title     = meta.title   ?: title,
         artist    = meta.artist  ?: artist,
         album     = meta.album   ?: result.author,
         albumId   = 0L,
@@ -437,6 +439,9 @@ internal fun extractVideoRenderers(obj: JSONObject, out: MutableList<JSONObject>
     if (obj.has("videoRenderer") && obj.optJSONObject("videoRenderer")?.has("videoId") == true) {
         out.add(obj.getJSONObject("videoRenderer")); return out
     }
+    if (obj.has("videoWithContextRenderer") && obj.optJSONObject("videoWithContextRenderer")?.has("videoId") == true) {
+        out.add(obj.getJSONObject("videoWithContextRenderer")); return out
+    }
     obj.keys().forEach { key ->
         when (val v = obj.opt(key)) {
             is JSONObject -> extractVideoRenderers(v, out)
@@ -459,12 +464,14 @@ private fun extractVideoRenderers(arr: JSONArray, out: MutableList<JSONObject> =
 internal fun parseInnertubeRenderer(vr: JSONObject): OnlineResult? {
     val videoId = vr.optString("videoId").ifEmpty { return null }
     val rawTitle = htmlDecode(
-        vr.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
+        vr.optJSONObject("headline")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
+            ?: vr.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
             ?: vr.optJSONObject("title")?.optString("simpleText") ?: ""
     ).ifEmpty { return null }
     val rawAuthor = vr.optJSONObject("ownerText")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
         ?: vr.optJSONObject("shortBylineText")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text") ?: ""
-    val lengthText = vr.optJSONObject("lengthText")?.optString("simpleText")
+    val lengthText = vr.optJSONObject("lengthText")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
+        ?: vr.optJSONObject("lengthText")?.optString("simpleText")
         ?: vr.optJSONObject("lengthText")?.optJSONObject("accessibility")
             ?.optJSONObject("accessibilityData")?.optString("label") ?: ""
     val duration = parseTimestamp(lengthText)

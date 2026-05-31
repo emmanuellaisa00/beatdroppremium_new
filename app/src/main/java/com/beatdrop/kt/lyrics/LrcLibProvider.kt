@@ -37,33 +37,60 @@ object LrcLibProvider {
         }
 
         // 2) Search fallback (strip "(feat. …)", "[Official]", "- audio", etc.)
-        runCatching {
-            val cleanTitle = track.title
-                .replace(Regex("""\s*[(\[].*?[)\]]"""), "")
-                .replace(Regex("""\s*-\s*(official|audio|video|lyric|music).*""", RegexOption.IGNORE_CASE), "")
-                .trim()
-            val url = "$BASE/search?track_name=${enc(cleanTitle)}&artist_name=${enc(track.artist)}"
-            val arr = getJsonArray(url) ?: return emptyList()
-            if (arr.length() == 0) return emptyList()
+        val cleanTitle = track.title
+            .replace(Regex("""\s*[(\[].*?[)\]]"""), "")
+            .replace(Regex("""\s*-\s*(official|audio|video|lyric|music).*""", RegexOption.IGNORE_CASE), "")
+            .trim()
 
-            // Prefer entries with synced lyrics, then closest duration.
-            var best: JSONObject? = null
-            var bestScore = Long.MAX_VALUE
-            var bestHasSynced = false
-            for (i in 0 until arr.length()) {
-                val o = arr.getJSONObject(i)
-                val hasSynced = !o.optString("syncedLyrics").isNullOrBlank()
-                val dur = o.optInt("duration", 0)
-                val score = if (durationSec > 0) abs(dur - durationSec).toLong() else 0L
-                val better = when {
-                    hasSynced && !bestHasSynced -> true
-                    hasSynced == bestHasSynced -> score < bestScore
-                    else -> false
+        runCatching {
+            val url = "$BASE/search?track_name=${enc(cleanTitle)}&artist_name=${enc(track.artist)}"
+            val arr = getJsonArray(url)
+            if (arr != null && arr.length() > 0) {
+                // Prefer entries with synced lyrics, then closest duration.
+                var best: JSONObject? = null
+                var bestScore = Long.MAX_VALUE
+                var bestHasSynced = false
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    val hasSynced = !o.optString("syncedLyrics").isNullOrBlank()
+                    val dur = o.optInt("duration", 0)
+                    val score = if (durationSec > 0) abs(dur - durationSec).toLong() else 0L
+                    val better = when {
+                        hasSynced && !bestHasSynced -> true
+                        hasSynced == bestHasSynced -> score < bestScore
+                        else -> false
+                    }
+                    if (best == null || better) { best = o; bestScore = score; bestHasSynced = hasSynced }
                 }
-                if (best == null || better) { best = o; bestScore = score; bestHasSynced = hasSynced }
+                best?.let { fromObject(it, durationSec)?.let { lines -> return lines } }
             }
-            best?.let { fromObject(it, durationSec)?.let { lines -> return lines } }
         }
+
+        // 3) Broad Search Query fallback (q=Artist+Title)
+        runCatching {
+            val url = "$BASE/search?q=${enc(track.artist + " " + cleanTitle)}"
+            val arr = getJsonArray(url)
+            if (arr != null && arr.length() > 0) {
+                // Prefer entries with synced lyrics, then closest duration.
+                var best: JSONObject? = null
+                var bestScore = Long.MAX_VALUE
+                var bestHasSynced = false
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    val hasSynced = !o.optString("syncedLyrics").isNullOrBlank()
+                    val dur = o.optInt("duration", 0)
+                    val score = if (durationSec > 0) abs(dur - durationSec).toLong() else 0L
+                    val better = when {
+                        hasSynced && !bestHasSynced -> true
+                        hasSynced == bestHasSynced -> score < bestScore
+                        else -> false
+                    }
+                    if (best == null || better) { best = o; bestScore = score; bestHasSynced = hasSynced }
+                }
+                best?.let { fromObject(it, durationSec)?.let { lines -> return lines } }
+            }
+        }
+
         return emptyList()
     }
 

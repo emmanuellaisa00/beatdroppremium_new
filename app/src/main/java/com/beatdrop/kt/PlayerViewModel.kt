@@ -118,6 +118,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     val defaultShuffle: StateFlow<Boolean> = _defaultShuffle.asStateFlow()
     fun setDefaultShuffle(v: Boolean) { _defaultShuffle.value = v; viewModelScope.launch { prefs.setDefaultShuffle(v) } }
 
+    private val _autoDjEnabled = MutableStateFlow(false)
+    val autoDjEnabled: StateFlow<Boolean> = _autoDjEnabled.asStateFlow()
+    fun setAutoDjEnabled(v: Boolean) { _autoDjEnabled.value = v; viewModelScope.launch { prefs.setAutoDj(v) } }
+    @Volatile private var isCrossfading = false
+
     private fun observePrefs() {
         prefs.likedFlow.onEach { _liked.value = it }.launchIn(viewModelScope)
         prefs.playlistsFlow.onEach { _playlists.value = it }.launchIn(viewModelScope)
@@ -125,6 +130,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         prefs.hapticsFlow.onEach { _haptics.value = it }.launchIn(viewModelScope)
         prefs.themeFlow.onEach { _theme.value = it }.launchIn(viewModelScope)
         prefs.defaultShuffleFlow.onEach { _defaultShuffle.value = it }.launchIn(viewModelScope)
+        prefs.autoDjFlow.onEach { _autoDjEnabled.value = it }.launchIn(viewModelScope)
     }
 
     // ── Queue / shuffle / repeat ──────────────────────────────────────────────
@@ -296,13 +302,57 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             while (true) {
                 val c = controller
                 if (c != null && c.isPlaying) {
-                    _position.value = c.currentPosition.coerceAtLeast(0L)
-                    if (c.duration > 0) _duration.value = c.duration
+                    val pos = c.currentPosition.coerceAtLeast(0L)
+                    val dur = c.duration
+                    _position.value = pos
+                    if (dur > 0) {
+                        _duration.value = dur
+                        if (_autoDjEnabled.value && (dur - pos) <= 5000L && (dur - pos) > 1000L && !isCrossfading) {
+                            triggerAutoDjTransition()
+                        }
+                    }
                     if (_lyrics.value.isNotEmpty())
                         _activeLyric.value = LrcParser.activeIndex(_lyrics.value, _position.value)
                     delay(120)
                 } else delay(400)
             }
+        }
+    }
+
+    private fun triggerAutoDjTransition() {
+        if (isCrossfading) return
+        isCrossfading = true
+        viewModelScope.launch {
+            val cur = _current.value ?: run { isCrossfading = false; return@launch }
+            val list = _tracks.value
+            if (list.isEmpty()) { isCrossfading = false; return@launch }
+            val candidates = list.filter { it.id != cur.id }
+            val nextTrack = candidates.firstOrNull { it.artist.equals(cur.artist, ignoreCase = true) }
+                ?: candidates.firstOrNull { it.album.equals(cur.album, ignoreCase = true) }
+                ?: candidates.randomOrNull()
+                ?: cur
+            loadDeckB(nextTrack)
+            val steps = 40
+            val delayMs = 100L // 4 seconds crossfade
+            for (i in 0..steps) {
+                val ratio = i.toFloat() / steps
+                controller?.volume = 1f - ratio
+                deckB?.volume = ratio
+                delay(delayMs)
+            }
+            val c = controller
+            if (c != null) {
+                c.setMediaItem(nextTrack.toMediaItem())
+                c.prepare()
+                c.volume = 1f
+                c.play()
+                _current.value = nextTrack
+                _duration.value = nextTrack.durationMs
+                loadLyrics(nextTrack)
+            }
+            deckB?.pause()
+            deckB?.volume = 0f
+            isCrossfading = false
         }
     }
 
@@ -405,6 +455,24 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             loadLyrics(track)
             _isFetchingStream.value = false
             _fetchingVideoId.value = null
+        }
+    }
+
+    fun playOnlineByMetadata(title: String, artist: String, coverUrl: String?) {
+        viewModelScope.launch {
+            _isFetchingStream.value = true
+            val query = "$artist $title"
+            val results = runCatching { OnlineSearch.provider.search(query) }.getOrNull()
+            val bestMatch = results?.firstOrNull()
+            if (bestMatch != null) {
+                val cleanMatch = if (bestMatch.thumbnailUrl.isNullOrBlank()) {
+                    bestMatch.copy(thumbnailUrl = coverUrl)
+                } else bestMatch
+                playOnline(cleanMatch)
+            } else {
+                _onlineMessage.value = "Could not find a stream for: $title"
+                _isFetchingStream.value = false
+            }
         }
     }
 

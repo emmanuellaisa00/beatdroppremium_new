@@ -23,6 +23,7 @@ class Prefs(private val context: Context) {
         val THEME = stringPreferencesKey("theme")            // "system" | "dark" | "light"
         val HAPTICS = booleanPreferencesKey("haptics")
         val DEFAULT_SHUFFLE = booleanPreferencesKey("default_shuffle")
+        val AUTO_DJ = booleanPreferencesKey("auto_dj")
     }
 
     // ── liked ──
@@ -65,6 +66,9 @@ class Prefs(private val context: Context) {
 
     val defaultShuffleFlow: Flow<Boolean> = context.dataStore.data.map { it[Keys.DEFAULT_SHUFFLE] ?: false }
     suspend fun setDefaultShuffle(v: Boolean) { context.dataStore.edit { it[Keys.DEFAULT_SHUFFLE] = v } }
+
+    val autoDjFlow: Flow<Boolean> = context.dataStore.data.map { it[Keys.AUTO_DJ] ?: false }
+    suspend fun setAutoDj(v: Boolean) { context.dataStore.edit { it[Keys.AUTO_DJ] = v } }
 
     // ── helpers ──
     private fun jsonArrayToSet(s: String?): Set<String> {
