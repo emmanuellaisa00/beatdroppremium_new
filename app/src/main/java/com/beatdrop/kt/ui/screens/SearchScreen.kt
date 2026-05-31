@@ -42,6 +42,7 @@ fun SearchScreen(vm: PlayerViewModel) {
     val fetchingId by vm.fetchingVideoId.collectAsState()
     val message by vm.onlineMessage.collectAsState()
     val suggestions by vm.suggestions.collectAsState()
+    val history by vm.searchHistory.collectAsState()
     val jobs by vm.downloadJobs.collectAsState()
     val snackbar = remember { SnackbarHostState() }
 
@@ -82,27 +83,64 @@ fun SearchScreen(vm: PlayerViewModel) {
                 keyboardActions = KeyboardActions(onSearch = { vm.runOnlineSearch() }),
             )
 
-            // ── Suggestions chips ─────────────────────────────────────────────
-            AnimatedVisibility(visible = suggestions.isNotEmpty() && results.isEmpty()) {
+            // ── Search history or autocomplete suggestions ─────────────────────────────────────────────
+            val showHistory = q.isEmpty() && history.isNotEmpty() && results.isEmpty()
+            val showSuggestions = q.isNotEmpty() && suggestions.isNotEmpty() && results.isEmpty()
+
+            AnimatedVisibility(visible = showHistory || showSuggestions) {
                 LazyColumn(
                     contentPadding = PaddingValues(top = 8.dp),
-                    modifier = Modifier.heightIn(max = 220.dp),
+                    modifier = Modifier.heightIn(max = 260.dp),
                 ) {
-                    items(suggestions) { suggestion ->
-                        Row(
-                            Modifier.fillMaxWidth()
-                                .pressableScale(onClick = {
-                                    vm.setOnlineQuery(suggestion)
-                                    vm.runOnlineSearch()
-                                })
-                                .padding(vertical = 12.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(Icons.Filled.History, null, tint = C.textTertiary, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(14.dp))
-                            Text(suggestion, color = C.text, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (showHistory) {
+                        item {
+                            Text(
+                                "Recent Searches",
+                                color = C.textSecondary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(start = 6.dp, top = 8.dp, bottom = 6.dp)
+                            )
                         }
-                        Divider(color = C.bg3.copy(alpha = 0.5f), thickness = 0.5.dp)
+                        items(history) { query ->
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .pressableScale(onClick = {
+                                        vm.setOnlineQuery(query)
+                                        vm.runOnlineSearch()
+                                    })
+                                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Filled.History, null, tint = C.textTertiary, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(14.dp))
+                                Text(query, color = C.text, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                IconButton(
+                                    onClick = { vm.deleteHistoryQuery(query) },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(Icons.Filled.Close, "Delete", tint = C.textTertiary, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                            Divider(color = C.bg3.copy(alpha = 0.5f), thickness = 0.5.dp)
+                        }
+                    } else if (showSuggestions) {
+                        items(suggestions) { suggestion ->
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .pressableScale(onClick = {
+                                        vm.setOnlineQuery(suggestion)
+                                        vm.runOnlineSearch()
+                                    })
+                                    .padding(vertical = 12.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Filled.Search, null, tint = C.textTertiary, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(14.dp))
+                                Text(suggestion, color = C.text, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            Divider(color = C.bg3.copy(alpha = 0.5f), thickness = 0.5.dp)
+                        }
                     }
                 }
             }

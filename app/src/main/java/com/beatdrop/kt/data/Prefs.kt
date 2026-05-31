@@ -24,6 +24,7 @@ class Prefs(private val context: Context) {
         val HAPTICS = booleanPreferencesKey("haptics")
         val DEFAULT_SHUFFLE = booleanPreferencesKey("default_shuffle")
         val AUTO_DJ = booleanPreferencesKey("auto_dj")
+        val SEARCH_HISTORY = stringPreferencesKey("search_history")
     }
 
     // ── liked ──
@@ -70,7 +71,37 @@ class Prefs(private val context: Context) {
     val autoDjFlow: Flow<Boolean> = context.dataStore.data.map { it[Keys.AUTO_DJ] ?: false }
     suspend fun setAutoDj(v: Boolean) { context.dataStore.edit { it[Keys.AUTO_DJ] = v } }
 
+    // ── search history ──
+    val searchHistoryFlow: Flow<List<String>> = context.dataStore.data.map { p ->
+        jsonArrayToList(p[Keys.SEARCH_HISTORY])
+    }
+    suspend fun addSearchQuery(q: String) {
+        val trimmed = q.trim()
+        if (trimmed.isBlank()) return
+        context.dataStore.edit { prefs ->
+            val list = jsonArrayToList(prefs[Keys.SEARCH_HISTORY]).toMutableList()
+            list.remove(trimmed)
+            list.add(0, trimmed)
+            val limited = list.take(15) // limit to top 15 queries
+            prefs[Keys.SEARCH_HISTORY] = JSONArray(limited).toString()
+        }
+    }
+    suspend fun deleteSearchQuery(q: String) {
+        context.dataStore.edit { prefs ->
+            val list = jsonArrayToList(prefs[Keys.SEARCH_HISTORY]).toMutableList()
+            list.remove(q)
+            prefs[Keys.SEARCH_HISTORY] = JSONArray(list).toString()
+        }
+    }
+
     // ── helpers ──
+    private fun jsonArrayToList(s: String?): List<String> {
+        if (s.isNullOrBlank()) return emptyList()
+        return runCatching {
+            val a = JSONArray(s); (0 until a.length()).map { a.getString(it) }
+        }.getOrDefault(emptyList())
+    }
+
     private fun jsonArrayToSet(s: String?): Set<String> {
         if (s.isNullOrBlank()) return emptySet()
         return runCatching {

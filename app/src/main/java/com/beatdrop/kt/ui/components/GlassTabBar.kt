@@ -65,9 +65,9 @@ fun GlassTabBar(tabs: List<TabSpec>, current: String, onSelect: (String) -> Unit
                 .clip(RoundedCornerShape(50.dp))               // fully pill-shaped ends
                 .background(                                    // translucent fill — content bleeds through
                     if (C.isDark)
-                        Color(0x1AFFFFFF)                      // ~10% white
+                        Color(0xCC12101F)                      // Frosted dark violet glass
                     else
-                        Color(0xB3FFFFFF)                      // ~70% white
+                        Color(0xE6F2F2F7)                      // Frosted light glass
                 )
                 .border(
                     width = 0.8.dp,

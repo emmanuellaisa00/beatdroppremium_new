@@ -123,6 +123,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun setAutoDjEnabled(v: Boolean) { _autoDjEnabled.value = v; viewModelScope.launch { prefs.setAutoDj(v) } }
     @Volatile private var isCrossfading = false
 
+    private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
+    val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
+    fun deleteHistoryQuery(q: String) { viewModelScope.launch { prefs.deleteSearchQuery(q) } }
+
     private fun observePrefs() {
         prefs.likedFlow.onEach { _liked.value = it }.launchIn(viewModelScope)
         prefs.playlistsFlow.onEach { _playlists.value = it }.launchIn(viewModelScope)
@@ -131,6 +135,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         prefs.themeFlow.onEach { _theme.value = it }.launchIn(viewModelScope)
         prefs.defaultShuffleFlow.onEach { _defaultShuffle.value = it }.launchIn(viewModelScope)
         prefs.autoDjFlow.onEach { _autoDjEnabled.value = it }.launchIn(viewModelScope)
+        prefs.searchHistoryFlow.onEach { _searchHistory.value = it }.launchIn(viewModelScope)
     }
 
     // ── Queue / shuffle / repeat ──────────────────────────────────────────────
@@ -446,6 +451,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         if (q.isBlank()) return
         _isSearching.value = true; _suggestions.value = emptyList()
         viewModelScope.launch {
+            // Save search query in local history
+            runCatching { prefs.addSearchQuery(q) }
             val res = runCatching { OnlineSearch.provider.search(q) }.getOrElse {
                 _onlineMessage.value = "Couldn't search the catalog: ${it.message}"; emptyList()
             }
