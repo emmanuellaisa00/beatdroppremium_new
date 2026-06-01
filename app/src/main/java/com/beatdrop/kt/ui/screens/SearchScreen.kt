@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,8 +57,20 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
         }
     }
 
+    val lastFailed by vm.lastFailedOnline.collectAsState()
+
     LaunchedEffect(message) {
-        message?.let { snackbar.showSnackbar(it); vm.clearOnlineMessage() }
+        message?.let {
+            val result = if (lastFailed != null) {
+                snackbar.showSnackbar(it, actionLabel = "Retry")
+            } else {
+                snackbar.showSnackbar(it)
+            }
+            if (result == SnackbarResult.ActionPerformed) {
+                vm.retryOnlinePlay()
+            }
+            vm.clearOnlineMessage()
+        }
     }
 
     Box(Modifier.fillMaxSize()) {

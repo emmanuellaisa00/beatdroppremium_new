@@ -14,6 +14,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.GraphicEq
@@ -247,6 +248,11 @@ private fun TabsHost(
 @Composable private fun PlaylistsScreenHosted(vm: PlayerViewModel, onBack: () -> Unit, onOpen: (String) -> Unit) = PlaylistsScreen(vm, onBack = onBack, onOpen = onOpen)
 @Composable private fun StatsHosted(vm: PlayerViewModel, onBack: () -> Unit) = StatsScreen(vm, onBack = onBack)
 
+/**
+ * Liquid Glass status bar overlay — uses backdrop blur + saturation boost
+ * with a subtle rim light at the bottom edge. Adapts to light/dark theme.
+ * Pre-API-31 fallback uses a heavier translucent fill.
+ */
 @Composable
 fun StatusBarGlassOverlay() {
     val C = LocalAppColors.current
@@ -259,15 +265,35 @@ fun StatusBarGlassOverlay() {
             .then(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     Modifier.graphicsLayer {
-                        renderEffect = android.graphics.RenderEffect
-                            .createBlurEffect(40f, 40f, android.graphics.Shader.TileMode.CLAMP)
-                            .asComposeRenderEffect()
+                        renderEffect = android.graphics.RenderEffect.createChainEffect(
+                            android.graphics.RenderEffect.createColorFilterEffect(
+                                android.graphics.ColorMatrixColorFilter(
+                                    android.graphics.ColorMatrix().apply { setSaturation(1.5f) }
+                                )
+                            ),
+                            android.graphics.RenderEffect
+                                .createBlurEffect(45f, 45f, android.graphics.Shader.TileMode.CLAMP),
+                        ).asComposeRenderEffect()
                         clip = true
                     }
                 } else Modifier
             )
             .background(
-                if (C.isDark) Color(0x1F0A0910) else Color(0x1FDDDDDD)
+                if (C.isDark) Color(0x200A0910) else Color(0x22EEEEEE)
             )
+            .drawWithContent {
+                drawContent()
+                // Bottom-edge rim light — glass thickness indicator
+                drawRect(
+                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            if (C.isDark) Color(0x0CFFFFFF) else Color(0x08000000),
+                        ),
+                        startY = size.height * 0.6f,
+                        endY = size.height,
+                    ),
+                )
+            }
     )
 }

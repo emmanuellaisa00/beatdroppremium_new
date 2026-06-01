@@ -3,6 +3,7 @@
     Standard HTTPS-only config.
     YouTube, googlevideo.com (stream delivery), ytimg.com, and Invidious
     all use TLS — no cleartext needed.
+    Updated: mid-2026 alive Invidious instances.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
@@ -16,14 +17,14 @@
         <domain includeSubdomains="true">ytimg.com</domain>
         <domain includeSubdomains="true">googlevideo.com</domain>
         <domain includeSubdomains="true">ggpht.com</domain>
-        <domain includeSubdomains="true">itunes.apple.com</domain>
-        <domain includeSubdomains="true">invidious.io.lol</domain>
-        <domain includeSubdomains="true">invidious.fdn.fr</domain>
-        <domain includeSubdomains="true">vid.puffyan.us</domain>
-        <domain includeSubdomains="true">yewtu.be</domain>
-        <domain includeSubdomains="true">invidious.privacydev.net</domain>
+        <domain includeSubdomains="true">googleusercontent.com</domain>
+        <domain includeSubdomains="true">googleapis.com</domain>
+        <!-- Invidious instances (updated mid-2026) -->
         <domain includeSubdomains="true">inv.nadeko.net</domain>
-        <domain includeSubdomains="true">inv.tux.pizza</domain>
-        <domain includeSubdomains="true">invidious.private.coffee</domain>
+        <domain includeSubdomains="true">invidious.nerdvpn.de</domain>
+        <domain includeSubdomains="true">invidious.f5.si</domain>
+        <domain includeSubdomains="true">inv.thepixora.com</domain>
+        <domain includeSubdomains="true">yewtu.be</domain>
+        <domain includeSubdomains="true">invidious.fdn.fr</domain>
     </domain-config>
 </network-security-config>

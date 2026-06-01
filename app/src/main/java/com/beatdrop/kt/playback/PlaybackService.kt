@@ -14,6 +14,10 @@ import androidx.media3.session.MediaSessionService
  *
  * HTTP headers are injected so YouTube stream URLs (which are IP-bound and
  * Referer-gated) resolve correctly in ExoPlayer.
+ *
+ * Updated for 2026: Uses ANDROID_VR user agent (Oculus Quest) which is the
+ * primary client that doesn't require PO tokens. Also includes standard
+ * YouTube CDN headers (Referer, Origin) to prevent 403 on stream fetch.
  */
 @UnstableApi
 class PlaybackService : MediaSessionService() {
@@ -21,13 +25,17 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        // YouTube CDN requires Referer + Origin; without them streams return 403
+        // YouTube CDN requires specific headers; without them streams return 403.
+        // Use ANDROID_VR user agent for best compatibility with PO-token-free streams.
         val httpFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent("com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip")
+            .setUserAgent("com.google.android.apps.youtube.vr.oculus/1.57.29 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip")
             .setDefaultRequestProperties(mapOf(
                 "Referer" to "https://www.youtube.com/",
                 "Origin"  to "https://www.youtube.com",
             ))
+            .setConnectTimeoutMs(15_000)
+            .setReadTimeoutMs(30_000)
+            .setAllowCrossProtocolRedirects(true)
         val dataSourceFactory = DefaultDataSource.Factory(this, httpFactory)
         val player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))

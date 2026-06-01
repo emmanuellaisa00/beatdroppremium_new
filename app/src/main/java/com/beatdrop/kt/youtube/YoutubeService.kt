@@ -22,11 +22,11 @@ import java.util.concurrent.atomic.AtomicLong
 
 // ─── HTTP Clients ─────────────────────────────────────────────────────────────
 
-// Fast client for API/search calls — short timeouts are fine for JSON responses
+// Search/API client — generous read timeout for large JSON payloads on slow networks
 private val okHttp = OkHttpClient.Builder()
-    .connectTimeout(5, TimeUnit.SECONDS)
-    .readTimeout(8, TimeUnit.SECONDS)
-    .writeTimeout(5, TimeUnit.SECONDS)
+    .connectTimeout(10, TimeUnit.SECONDS)
+    .readTimeout(20, TimeUnit.SECONDS)
+    .writeTimeout(10, TimeUnit.SECONDS)
     .followRedirects(true)
     .build()
 
@@ -49,12 +49,13 @@ private const val IOS_UA    = "com.google.ios.youtube/20.03.02 (iPhone16,2; U; C
 private const val CHUNK_COUNT         = 4
 private const val CHUNK_MIN_BYTES     = 1_048_576L  // 1 MB
 
+// Updated Invidious instances (alive as of mid-2026)
 private val INVIDIOUS_INSTANCES = listOf(
-    "https://yewtu.be",
-    "https://invidious.privacydev.net",
     "https://inv.nadeko.net",
-    "https://inv.tux.pizza",
-    "https://invidious.private.coffee",
+    "https://invidious.nerdvpn.de",
+    "https://invidious.f5.si",
+    "https://inv.thepixora.com",
+    "https://yewtu.be",
     "https://invidious.fdn.fr",
 )
 
@@ -68,9 +69,46 @@ private data class YtClient(
 )
 
 private val YT_CLIENTS = listOf(
-    // ── ANDROID — the single most reliable client in 2025 ───────────────────
-    // YouTube server-side decodes the `n` throttle param for native Android
-    // clients, so ExoPlayer receives clean, unthrottled CDN URLs directly.
+    // ── ANDROID_VR (Oculus Quest) — NO PO TOKEN REQUIRED (2026) ─────────────
+    // This is the single most reliable client as of 2026. YouTube does not
+    // require Proof of Origin tokens for this client. Only limitation: "Made
+    // for kids" videos are unavailable (irrelevant for a music player).
+    YtClient(
+        name = "ANDROID_VR", clientName = "ANDROID_VR", clientVersion = "1.57.29",
+        headers = mapOf(
+            "User-Agent"               to "com.google.android.apps.youtube.vr.oculus/1.57.29 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+            "X-Youtube-Client-Name"    to "28",
+            "X-Youtube-Client-Version" to "1.57.29",
+        ),
+        extraContext = JSONObject().apply {
+            put("osName", "Android"); put("osVersion", "12L")
+            put("androidSdkVersion", 32)
+            put("deviceMake", "Oculus"); put("deviceModel", "Quest 3")
+        },
+    ),
+    // ── WEB_EMBEDDED — NO PO TOKEN REQUIRED, embeddable videos only ─────────
+    YtClient(
+        name = "WEB_EMBEDDED", clientName = "WEB_EMBEDDED_PLAYER", clientVersion = "2.20241202.07.00",
+        headers = mapOf(
+            "User-Agent"               to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "X-Youtube-Client-Name"    to "56",
+            "X-Youtube-Client-Version" to "2.20241202.07.00",
+            "Origin"                   to "https://www.youtube.com",
+        )
+    ),
+    // ── TV_EMBEDDED — works for age-restricted/embed-locked videos ───────────
+    YtClient(
+        name = "TV_EMBEDDED", clientName = "TVHTML5_SIMPLY_EMBEDDED_PLAYER", clientVersion = "2.0",
+        headers = mapOf(
+            "User-Agent"               to "Mozilla/5.0 (SMART-TV; LINUX; Tizen 5.0) AppleWebKit/537.36",
+            "X-Youtube-Client-Name"    to "85",
+            "X-Youtube-Client-Version" to "2.0",
+            "Origin"                   to "https://www.youtube.com",
+            "Referer"                  to "https://www.youtube.com/",
+        ),
+        bodyExtra = JSONObject().put("thirdParty", JSONObject().put("embedUrl", "https://www.youtube.com/")),
+    ),
+    // ── ANDROID — may require PO token (GVS) in 2026, but sometimes works ───
     YtClient(
         name = "ANDROID", clientName = "ANDROID", clientVersion = "19.09.37",
         headers = mapOf(
@@ -81,7 +119,7 @@ private val YT_CLIENTS = listOf(
         extraContext = JSONObject()
             .put("osName", "Android").put("osVersion", "11").put("androidSdkVersion", 30),
     ),
-    // ── IOS — exempt from web BotGuard, plain URLs for most content ─────────
+    // ── IOS — may require PO token (GVS) in 2026, but sometimes works ───────
     YtClient(
         name = "IOS", clientName = "IOS", clientVersion = "20.03.02",
         headers = mapOf(
@@ -94,7 +132,7 @@ private val YT_CLIENTS = listOf(
             put("osName", "iPhone");   put("osVersion", "18.2.1.22C161")
         }
     ),
-    // ── MWEB ─────────────────────────────────────────────────────────────────
+    // ── MWEB — may require PO token (GVS) in 2026, kept as last resort ──────
     YtClient(
         name = "MWEB", clientName = "MWEB", clientVersion = "2.20241202.07.00",
         headers = mapOf(
@@ -102,28 +140,6 @@ private val YT_CLIENTS = listOf(
             "X-Youtube-Client-Name"    to "2",
             "X-Youtube-Client-Version" to "2.20241202.07.00",
             "Origin"                   to "https://m.youtube.com",
-        )
-    ),
-    // ── TV_EMBEDDED — works even for age-restricted/embed-locked videos ──────
-    YtClient(
-        name = "TV_EMBEDDED", clientName = "TVHTML5_SIMPLY_EMBEDDED_PLAYER", clientVersion = "2.0",
-        headers = mapOf(
-            "User-Agent"               to "Mozilla/5.0 (SMART-TV; LINUX; Tizen 5.0) AppleWebKit/537.36",
-            "X-Youtube-Client-Name"    to "85",
-            "X-Youtube-Client-Version" to "2.0",
-            "Origin"                   to "https://www.youtube.com",
-            "Referer"                  to "https://www.youtube.com/",
-        ),
-        bodyExtra = JSONObject().put("thirdParty", JSONObject().put("embedUrl", "https://www.youtube.com/")),
-    ),
-    // ── WEB_EMBEDDED fallback ────────────────────────────────────────────────
-    YtClient(
-        name = "WEB_EMBEDDED", clientName = "WEB_EMBEDDED_PLAYER", clientVersion = "2.20241202.07.00",
-        headers = mapOf(
-            "User-Agent"               to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "X-Youtube-Client-Name"    to "56",
-            "X-Youtube-Client-Version" to "2.20241202.07.00",
-            "Origin"                   to "https://www.youtube.com",
         )
     ),
 )
@@ -155,19 +171,17 @@ object YoutubeService {
 // ─── Search ───────────────────────────────────────────────────────────────────
 suspend fun searchYoutube(query: String, maxResults: Int = 50): List<OnlineResult> =
     withContext(Dispatchers.IO) {
-        // Run both a plain query and a music-tagged query in parallel so we
-        // always get plenty of results even for obscure tracks.
         val cleanQuery   = query.trim()
+        // Always produce a meaningfully different second query for more coverage
         val musicQuery   = musicifyQuery(cleanQuery)
 
-        suspend fun innertubeSearch(q: String): List<JSONObject> {
+        suspend fun innertubeSearch(q: String): Pair<List<JSONObject>, String?> {
             val body = JSONObject().apply {
                 put("query", q)
                 put("context", JSONObject().put("client", JSONObject().apply {
                     put("clientName", "MWEB"); put("clientVersion", "2.20241202.07.00")
                     put("hl", "en"); put("gl", "US"); put("utcOffsetMinutes", 0)
                 }))
-                // No SP/params filter — plain search returns the most results
             }.toString()
 
             val req = Request.Builder()
@@ -184,26 +198,116 @@ suspend fun searchYoutube(query: String, maxResults: Int = 50): List<OnlineResul
                 if (!resp.isSuccessful) throw Exception("Search failed (${resp.code})")
                 JSONObject(resp.body!!.string())
             }
+            val renderers = extractVideoRenderers(json)
+            val contToken = extractContinuationToken(json)
+            return Pair(renderers, contToken)
+        }
+
+        // Fetch continuation page for more results
+        suspend fun innertubeContinuation(token: String): List<JSONObject> {
+            val body = JSONObject().apply {
+                put("continuation", token)
+                put("context", JSONObject().put("client", JSONObject().apply {
+                    put("clientName", "MWEB"); put("clientVersion", "2.20241202.07.00")
+                    put("hl", "en"); put("gl", "US"); put("utcOffsetMinutes", 0)
+                }))
+            }.toString()
+
+            val req = Request.Builder()
+                .url("$YT_SEARCH?key=$YT_KEY&prettyPrint=false")
+                .post(body.toRequestBody("application/json".toMediaType()))
+                .header("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15")
+                .header("X-Youtube-Client-Name", "2")
+                .header("X-Youtube-Client-Version", "2.20241202.07.00")
+                .header("Origin", "https://m.youtube.com")
+                .header("Referer", "https://m.youtube.com/")
+                .build()
+
+            val json = okHttp.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return emptyList()
+                JSONObject(resp.body!!.string())
+            }
             return extractVideoRenderers(json)
         }
 
-        // Fetch plain + music-specific queries and merge by videoId
-        val plain  = runCatching { innertubeSearch(cleanQuery) }.getOrElse { emptyList() }
-        val music  = if (musicQuery != cleanQuery) runCatching { innertubeSearch(musicQuery) }.getOrElse { emptyList() } else emptyList()
+        // Fetch first page + continuation in parallel with music query
+        val plainResult = runCatching { innertubeSearch(cleanQuery) }.getOrElse { Pair(emptyList(), null) }
+        val plain       = plainResult.first
+        val contToken   = plainResult.second
+
+        // Always run the music query (musicifyQuery now always returns something different)
+        val music = runCatching { innertubeSearch(musicQuery).first }.getOrElse { emptyList() }
+
+        // Fetch continuation page for more results if available
+        val continuation = if (contToken != null) {
+            runCatching { innertubeContinuation(contToken) }.getOrElse { emptyList() }
+        } else emptyList()
 
         val seen   = mutableSetOf<String>()
-        val merged = (plain + music).filter { vr ->
+        val merged = (plain + music + continuation).filter { vr ->
             val id = vr.optString("videoId")
             if (id.isBlank() || !seen.add(id)) false else true
         }
 
         merged
             .mapNotNull { parseInnertubeRenderer(it) }
-            // Allow 30 s–15 min; keep unknowns (duration=0 = no metadata yet, not a live stream)
-            .filter { !it.isLive && it.durationSecs <= 900 && (it.durationSecs == 0 || it.durationSecs >= 30) }
+            // Fixed filter: don't kill results with unknown duration; raise cap to 60 min
+            .filter { !it.isLive && (it.durationSecs == 0 || it.durationSecs in 15..3600) }
             .sortedByDescending { musicRelevanceScore(it) }
             .take(maxResults)
     }
+
+// ─── Continuation token extraction ───────────────────────────────────────────
+private fun extractContinuationToken(obj: JSONObject): String? {
+    // Recursively search for continuationCommand.token or continuationEndpoint
+    return findContinuationToken(obj)
+}
+
+private fun findContinuationToken(obj: JSONObject): String? {
+    if (obj.has("continuationCommand")) {
+        val token = obj.optJSONObject("continuationCommand")?.optString("token")
+        if (!token.isNullOrBlank()) return token
+    }
+    if (obj.has("token") && obj.optString("request") == "CONTINUATION_REQUEST_TYPE_SEARCH") {
+        val token = obj.optString("token")
+        if (token.isNotBlank()) return token
+    }
+    // Check continuationItemRenderer pattern
+    if (obj.has("continuationEndpoint")) {
+        val token = obj.optJSONObject("continuationEndpoint")
+            ?.optJSONObject("continuationCommand")?.optString("token")
+        if (!token.isNullOrBlank()) return token
+    }
+    obj.keys().forEach { key ->
+        when (val v = obj.opt(key)) {
+            is JSONObject -> {
+                val t = findContinuationToken(v)
+                if (t != null) return t
+            }
+            is JSONArray -> {
+                val t = findContinuationTokenArr(v)
+                if (t != null) return t
+            }
+        }
+    }
+    return null
+}
+
+private fun findContinuationTokenArr(arr: JSONArray): String? {
+    for (i in 0 until arr.length()) {
+        when (val v = arr.opt(i)) {
+            is JSONObject -> {
+                val t = findContinuationToken(v)
+                if (t != null) return t
+            }
+            is JSONArray -> {
+                val t = findContinuationTokenArr(v)
+                if (t != null) return t
+            }
+        }
+    }
+    return null
+}
 
 // ─── Search suggestions ───────────────────────────────────────────────────────
 suspend fun getSearchSuggestions(query: String): List<String> =
@@ -238,15 +342,14 @@ suspend fun getSearchSuggestions(query: String): List<String> =
 
 // ─── Stream URL resolution ────────────────────────────────────────────────────
 /**
- * Strategy order (most → least reliable in 2025):
- *   1. WebView extractor  — YouTube's own JS decodes n-sig/signatureCipher.
- *                           shouldInterceptRequest captures the CDN URL.
- *   2. ANDROID Innertube  — YouTube server-side decodes `n` param for native
- *                           Android clients → unthrottled direct CDN URLs.
- *   3. IOS Innertube      — Exempt from web BotGuard, plain URLs for most videos.
+ * Strategy order (updated for 2026 PO Token enforcement):
+ *   1. WebView extractor  — YouTube's own JS resolves everything natively.
+ *   2. ANDROID_VR         — No PO token required (Oculus Quest client).
+ *   3. WEB_EMBEDDED       — No PO token required (embeddable videos only).
  *   4. TV_EMBEDDED        — Works for age-restricted / embed-locked videos.
- *   5. MWEB / WEB_EMBEDDED — Web fallbacks (may return throttled URLs).
- *   6. Invidious          — Public instances as last resort.
+ *   5. ANDROID / IOS      — May work intermittently without PO token.
+ *   6. MWEB               — Web fallback (PO token usually required).
+ *   7. Invidious          — Public instances as last resort.
  */
 suspend fun getStreamUrl(videoId: String): String {
     getCachedUrl(videoId)?.let { return it }
@@ -254,12 +357,12 @@ suspend fun getStreamUrl(videoId: String): String {
     // Strategy 1 — WebView extractor (primary, SnapTube approach)
     if (YoutubeExtractor.isConfigured) {
         try {
-            val url = YoutubeExtractor.extractStreamUrl(videoId, 12_000)
+            val url = YoutubeExtractor.extractStreamUrl(videoId, 15_000)
             if (!url.isNullOrBlank()) { setCachedUrl(videoId, url); return url }
         } catch (_: Exception) {}
     }
 
-    // Strategy 2–4 — Innertube /player API clients
+    // Strategy 2–6 — Innertube /player API clients (ordered by PO-token-free first)
     for (client in YT_CLIENTS) {
         try {
             val body = buildPlayerBody(videoId, client)
@@ -275,13 +378,15 @@ suspend fun getStreamUrl(videoId: String): String {
             } ?: continue
             if (data.optJSONObject("playabilityStatus")?.optString("status") != "OK") continue
 
-            val formats = data.optJSONObject("streamingData")?.optJSONArray("adaptiveFormats")
-            val url = getBestAudioUrl(formats)
+            val streamingData = data.optJSONObject("streamingData") ?: continue
+            // Try adaptiveFormats first, then fall back to regular formats
+            val url = getBestAudioUrl(streamingData.optJSONArray("adaptiveFormats"))
+                ?: getBestAudioUrl(streamingData.optJSONArray("formats"))
             if (!url.isNullOrBlank()) { setCachedUrl(videoId, url); return url }
         } catch (_: Exception) {}
     }
 
-    // Strategy 5 — Invidious public instances
+    // Strategy 7 — Invidious public instances
     for (instance in INVIDIOUS_INSTANCES) {
         try {
             val data = okHttp.newCall(
@@ -487,10 +592,14 @@ private fun buildPlayerBody(videoId: String, client: YtClient): String =
             put("hl", "en"); put("gl", "US")
             client.extraContext.keys().forEach { k -> put(k, client.extraContext.get(k)) }
         }))
-        // html5Preference only makes sense for web/TV clients, not native Android/iOS
-        if (client.clientName != "IOS" && client.clientName != "ANDROID") {
+        // html5Preference only makes sense for web/TV clients, not native Android/iOS/VR
+        if (client.clientName != "IOS" && client.clientName != "ANDROID" && client.clientName != "ANDROID_VR") {
             put("playbackContext", JSONObject().put("contentPlaybackContext",
                 JSONObject().put("html5Preference", "HTML5_PREF_WANTS")))
+        }
+        // ANDROID client needs CgIQBg parameter to bypass 403 integrity checks
+        if (client.clientName == "ANDROID") {
+            put("params", "CgIQBg")
         }
         put("contentCheckOk", true); put("racyCheckOk", true)
         // Inject any client-specific top-level fields (e.g. thirdParty embed URL)
@@ -504,56 +613,39 @@ private fun getBestAudioUrl(formats: JSONArray?): String? =
 
 /**
  * Selects the highest-bitrate audio format.
- * Also handles signatureCipher formats by extracting the raw URL
- * (works as-is for many streams; n-sig already applied by the IOS client).
+ * Only returns formats with a plain URL — signatureCipher formats are skipped
+ * because they require JS-based decipher which we cannot do server-side.
+ * The WebView extractor (Strategy 1) handles those cases natively.
  */
 private fun getBestAudioFormat(formats: JSONArray?): JSONObject? {
     if (formats == null) return null
     val all = (0 until formats.length()).map { formats.getJSONObject(it) }
 
-    // Prefer formats with a plain URL (no cipher decoding needed)
+    // Only use formats with a plain URL (no cipher decoding needed)
     val withUrl = all.filter { f ->
         val mt = (f.optString("mimeType") + f.optString("type")).lowercase()
-        mt.startsWith("audio/") && f.optString("url").isNotBlank()
+        mt.contains("audio/") && f.optString("url").isNotBlank()
     }.sortedByDescending { f ->
         f.optLong("bitrate").coerceAtLeast(f.optLong("averageBitrate"))
     }
-    if (withUrl.isNotEmpty()) return withUrl.first()
-
-    // Fallback: extract URL from signatureCipher/cipher without the signature
-    // (works on IOS-client streams; other clients may throttle without sig)
-    val withCipher = all.filter { f ->
-        val mt = (f.optString("mimeType") + f.optString("type")).lowercase()
-        mt.startsWith("audio/") && (f.has("signatureCipher") || f.has("cipher"))
-    }.sortedByDescending { f ->
-        f.optLong("bitrate").coerceAtLeast(f.optLong("averageBitrate"))
-    }
-    return withCipher.firstOrNull()?.let { f ->
-        val cipherStr = f.optString("signatureCipher").ifBlank { f.optString("cipher") }
-        if (cipherStr.isBlank()) return@let null
-        val params = cipherStr.split("&").associate { param ->
-            val eq = param.indexOf('=')
-            if (eq == -1) param to "" else
-                param.substring(0, eq) to Uri.decode(param.substring(eq + 1))
-        }
-        val rawUrl = params["url"] ?: return@let null
-        if (rawUrl.isBlank()) return@let null
-        JSONObject(f.toString()).apply { put("url", rawUrl) }
-    }
+    return withUrl.firstOrNull()
 }
 
+/**
+ * Always produce a meaningfully different second query so we always get
+ * double coverage. Never returns the same string as input.
+ */
 private fun musicifyQuery(q: String): String {
     val lower = q.lowercase()
-    // Only append a hint when the query has no existing audio/lyric context
-    // and is short enough that YouTube might otherwise return vlogs/reactions
     val hasAudioHint = lower.contains("official audio") || lower.contains("lyrics") ||
         lower.contains("audio") || lower.contains("music video") || lower.contains("topic")
     val hasDash = lower.contains(" - ") || lower.contains(" – ")
     return when {
-        hasAudioHint -> q
-        hasDash      -> q   // "Artist - Song" is already specific enough
-        q.length > 40 -> q  // Long queries don't need a suffix
-        else          -> "$q audio"   // Short generic queries get "audio" (lighter than "official audio")
+        hasAudioHint && !lower.contains("official audio") -> "$q official audio"
+        hasAudioHint -> "$q lyrics"
+        hasDash      -> "$q official audio"   // "Artist - Song" → "Artist - Song official audio"
+        q.length > 40 -> "$q song"
+        else          -> "$q official audio"
     }
 }
 
@@ -578,13 +670,35 @@ private fun musicRelevanceScore(r: OnlineResult): Int {
     return s
 }
 
+// ─── Video renderer extraction (fixed: no early return, more renderer types) ──
+
+/**
+ * Recursively extracts video renderer objects from the Innertube JSON response.
+ * Handles: videoRenderer, videoWithContextRenderer, compactVideoRenderer,
+ *          gridVideoRenderer, reelItemRenderer, playlistVideoRenderer.
+ * Does NOT early-return after finding a renderer — continues recursion to
+ * capture nested/grouped results (e.g., shelves, carousels).
+ */
 internal fun extractVideoRenderers(obj: JSONObject, out: MutableList<JSONObject> = mutableListOf()): List<JSONObject> {
-    if (obj.has("videoRenderer") && obj.optJSONObject("videoRenderer")?.has("videoId") == true) {
-        out.add(obj.getJSONObject("videoRenderer")); return out
+    // Check all known renderer types — add to list but keep recursing
+    val rendererKeys = listOf(
+        "videoRenderer",
+        "videoWithContextRenderer",
+        "compactVideoRenderer",
+        "gridVideoRenderer",
+        "reelItemRenderer",
+        "playlistVideoRenderer",
+    )
+    for (key in rendererKeys) {
+        if (obj.has(key)) {
+            val renderer = obj.optJSONObject(key)
+            if (renderer != null && renderer.has("videoId")) {
+                out.add(renderer)
+            }
+        }
     }
-    if (obj.has("videoWithContextRenderer") && obj.optJSONObject("videoWithContextRenderer")?.has("videoId") == true) {
-        out.add(obj.getJSONObject("videoWithContextRenderer")); return out
-    }
+
+    // Continue recursion into all children (no early return)
     obj.keys().forEach { key ->
         when (val v = obj.opt(key)) {
             is JSONObject -> extractVideoRenderers(v, out)
@@ -604,31 +718,128 @@ private fun extractVideoRenderers(arr: JSONArray, out: MutableList<JSONObject> =
     return out
 }
 
+/**
+ * Parses an Innertube video renderer into an OnlineResult.
+ * Handles multiple JSON structures for title, author, duration, and thumbnails
+ * across different renderer types (videoRenderer, compactVideoRenderer, etc.).
+ *
+ * isLive detection uses badge/overlay checks — NOT empty lengthText (which was
+ * falsely marking videos with missing duration metadata as live streams).
+ */
 internal fun parseInnertubeRenderer(vr: JSONObject): OnlineResult? {
     val videoId  = vr.optString("videoId").ifEmpty { return null }
+
+    // ── Title extraction (multiple paths for different renderers) ────────────
     val rawTitle = htmlDecode(
         vr.optJSONObject("headline")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
             ?: vr.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
-            ?: vr.optJSONObject("title")?.optString("simpleText") ?: ""
+            ?: vr.optJSONObject("title")?.optString("simpleText")
+            ?: vr.optJSONObject("title")?.optString("text")
+            ?: ""
     ).ifEmpty { return null }
-    val rawAuthor = vr.optJSONObject("ownerText")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
-        ?: vr.optJSONObject("shortBylineText")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text") ?: ""
-    val lengthText = vr.optJSONObject("lengthText")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
-        ?: vr.optJSONObject("lengthText")?.optString("simpleText")
-        ?: vr.optJSONObject("lengthText")?.optJSONObject("accessibility")
-            ?.optJSONObject("accessibilityData")?.optString("label") ?: ""
-    val duration   = parseTimestamp(lengthText)
+
+    // ── Author extraction (multiple paths) ──────────────────────────────────
+    val rawAuthor =
+        vr.optJSONObject("ownerText")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
+            ?: vr.optJSONObject("shortBylineText")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
+            ?: vr.optJSONObject("longBylineText")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
+            ?: vr.optJSONObject("channelThumbnailSupportedRenderers")
+                ?.optJSONObject("channelThumbnailWithLinkRenderer")
+                ?.optJSONObject("accessibility")?.optJSONObject("accessibilityData")?.optString("label")
+            ?: ""
+
+    // ── Duration extraction (multiple paths for different renderer types) ────
+    val lengthText =
+        // Standard videoRenderer path
+        vr.optJSONObject("lengthText")?.optString("simpleText")
+            ?: vr.optJSONObject("lengthText")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
+            ?: vr.optJSONObject("lengthText")?.optJSONObject("accessibility")
+                ?.optJSONObject("accessibilityData")?.optString("label")
+            // thumbnailOverlays path (common in compactVideoRenderer / gridVideoRenderer)
+            ?: extractDurationFromOverlays(vr)
+            // timestamp on thumbnail (reelItemRenderer style)
+            ?: vr.optJSONObject("thumbnailOverlayTimeStatusRenderer")
+                ?.optJSONObject("text")?.optString("simpleText")
+            ?: ""
+
+    val duration = parseTimestamp(lengthText)
+
+    // ── Live detection (proper badge/overlay checks, NOT empty lengthText) ───
+    val isLive = detectLiveStream(vr)
+
+    // ── Thumbnail extraction ────────────────────────────────────────────────
     val thumbsArr  = vr.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
-    val thumb      = if (thumbsArr != null && thumbsArr.length() > 0)
+    val thumb = if (thumbsArr != null && thumbsArr.length() > 0)
         thumbsArr.getJSONObject(thumbsArr.length() - 1).optString("url",
             "https://i.ytimg.com/vi/$videoId/hqdefault.jpg")
     else "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
+
     val (cleanTitle, cleanArtist) = parseTitle(rawTitle, rawAuthor)
     return OnlineResult(
         videoId = videoId, title = cleanTitle, author = cleanArtist,
         thumbnailUrl = thumb, durationText = formatTime(duration),
-        durationSecs = duration, isLive = lengthText.isEmpty(),
+        durationSecs = duration, isLive = isLive,
     )
+}
+
+/**
+ * Extract duration from thumbnailOverlays — used by compactVideoRenderer,
+ * gridVideoRenderer, and other mobile renderer types.
+ */
+private fun extractDurationFromOverlays(vr: JSONObject): String? {
+    val overlays = vr.optJSONArray("thumbnailOverlays") ?: return null
+    for (i in 0 until overlays.length()) {
+        val overlay = overlays.optJSONObject(i) ?: continue
+        val timeStatus = overlay.optJSONObject("thumbnailOverlayTimeStatusRenderer") ?: continue
+        val text = timeStatus.optJSONObject("text")
+        val simpleText = text?.optString("simpleText")
+        if (!simpleText.isNullOrBlank()) return simpleText
+        val runs = text?.optJSONArray("runs")
+        if (runs != null && runs.length() > 0) {
+            return runs.optJSONObject(0)?.optString("text")
+        }
+        // Accessibility fallback
+        val accLabel = text?.optJSONObject("accessibility")
+            ?.optJSONObject("accessibilityData")?.optString("label")
+        if (!accLabel.isNullOrBlank()) return accLabel
+    }
+    return null
+}
+
+/**
+ * Properly detects live streams by checking badges and thumbnail overlays.
+ * Does NOT rely on empty lengthText (which incorrectly flagged normal videos).
+ */
+private fun detectLiveStream(vr: JSONObject): Boolean {
+    // Check badges array
+    val badges = vr.optJSONArray("badges")
+    if (badges != null) {
+        for (i in 0 until badges.length()) {
+            val badge = badges.optJSONObject(i) ?: continue
+            val style = badge.optJSONObject("metadataBadgeRenderer")?.optString("style") ?: ""
+            val label = badge.optJSONObject("metadataBadgeRenderer")?.optString("label") ?: ""
+            if (style.contains("LIVE", true) || label.contains("LIVE", true)) return true
+        }
+    }
+    // Check thumbnail overlays for LIVE status
+    val overlays = vr.optJSONArray("thumbnailOverlays")
+    if (overlays != null) {
+        for (i in 0 until overlays.length()) {
+            val overlay = overlays.optJSONObject(i) ?: continue
+            val timeStatus = overlay.optJSONObject("thumbnailOverlayTimeStatusRenderer") ?: continue
+            val style = timeStatus.optString("style")
+            if (style.contains("LIVE", true)) return true
+            val text = timeStatus.optJSONObject("text")?.optString("simpleText") ?: ""
+            if (text.equals("LIVE", true)) return true
+        }
+    }
+    // Check ownerBadges
+    val ownerBadges = vr.optJSONArray("ownerBadges")
+    if (ownerBadges != null) {
+        val str = ownerBadges.toString()
+        if (str.contains("LIVE_NOW", true)) return true
+    }
+    return false
 }
 
 private fun parseTitle(raw: String, channelTitle: String): Pair<String, String> {
@@ -651,6 +862,23 @@ private fun parseTitle(raw: String, channelTitle: String): Pair<String, String> 
 
 private fun parseTimestamp(s: String): Int {
     if (s.isBlank()) return 0
+    // Handle accessibility labels like "3 minutes, 45 seconds"
+    val accMatch = Regex("(\\d+)\\s*minute").find(s)
+    val accSec   = Regex("(\\d+)\\s*second").find(s)
+    if (accMatch != null) {
+        val min = accMatch.groupValues[1].toIntOrNull() ?: 0
+        val sec = accSec?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+        return min * 60 + sec
+    }
+    // Handle hour accessibility labels
+    val accHour = Regex("(\\d+)\\s*hour").find(s)
+    if (accHour != null) {
+        val hr  = accHour.groupValues[1].toIntOrNull() ?: 0
+        val min = Regex("(\\d+)\\s*minute").find(s)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+        val sec = accSec?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+        return hr * 3600 + min * 60 + sec
+    }
+    // Standard "M:SS" or "H:MM:SS" format
     val parts = s.split(":").mapNotNull { it.trim().toIntOrNull() }
     return when (parts.size) {
         2 -> parts[0] * 60 + parts[1]

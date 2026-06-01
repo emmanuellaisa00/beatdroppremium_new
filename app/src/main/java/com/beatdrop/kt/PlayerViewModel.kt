@@ -462,7 +462,18 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     // Cache of ytTrack objects so syncCurrent() can find them by mediaId
     private val _ytTrackCache = mutableMapOf<String, Track>()
 
+    // Last failed online result — allows retry from UI
+    private val _lastFailedOnline = MutableStateFlow<OnlineResult?>(null)
+    val lastFailedOnline: StateFlow<OnlineResult?> = _lastFailedOnline.asStateFlow()
+
     fun playOnline(result: OnlineResult) {
+        prepareAndPlayOnline(result)
+    }
+
+    /** Retry the last failed online playback */
+    fun retryOnlinePlay() {
+        val result = _lastFailedOnline.value ?: return
+        _lastFailedOnline.value = null
         prepareAndPlayOnline(result)
     }
 
@@ -482,11 +493,23 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         )
         _current.value = tempTrack
         _fetchingVideoId.value = result.videoId
+        _lastFailedOnline.value = null
         onlineTransitionInProgress = true
 
         viewModelScope.launch {
-            val track = runCatching { youtubeResultToTrack(result) }.getOrElse {
-                _onlineMessage.value = "Couldn't stream this song: ${it.message}"
+            val track = runCatching { youtubeResultToTrack(result) }.getOrElse { err ->
+                val msg = when {
+                    err.message?.contains("403") == true ->
+                        "Playback blocked (403). YouTube may be restricting this content. Try another song."
+                    err.message?.contains("timeout", true) == true ->
+                        "Connection timed out. Check your internet and try again."
+                    err.message?.contains("Could not load") == true ->
+                        "No playable stream found. Try a different song."
+                    else ->
+                        "Couldn't stream this song: ${err.message}"
+                }
+                _onlineMessage.value = msg
+                _lastFailedOnline.value = result
                 _fetchingVideoId.value = null
                 onlineTransitionInProgress = false
                 return@launch

@@ -11,12 +11,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
+import com.beatdrop.kt.ui.theme.LocalAppColors
 
 /**
- * Spring press-scale + haptic. Optional long-press (combinedClickable) powers the
- * Spotify-style track action sheet.
+ * Spring press-scale + haptic + Liquid Glass interaction glow.
+ *
+ * When pressed, a radial glow emanates from the center of the element,
+ * simulating the Liquid Glass "illuminate from within" feedback.
+ * Optional long-press (combinedClickable) powers the Spotify-style
+ * track action sheet.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -25,6 +34,7 @@ fun Modifier.pressableScale(
     onLongClick: (() -> Unit)? = null,
     scaleTo: Float = 0.97f,
     haptic: Boolean = false,
+    enableGlow: Boolean = true,
 ): Modifier {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -33,9 +43,36 @@ fun Modifier.pressableScale(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "pressScale",
     )
+    val C = LocalAppColors.current
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (pressed && enableGlow) 0.3f else 0f,
+        animationSpec = if (pressed) spring(stiffness = 600f) else spring(stiffness = 200f),
+        label = "pressGlow",
+    )
     val view = LocalView.current
     return this
         .scale(scale)
+        .then(
+            if (enableGlow && glowAlpha > 0.01f) {
+                Modifier.drawWithContent {
+                    drawContent()
+                    // Radial glow from center — Liquid Glass interaction feedback
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                C.glassGlow.copy(alpha = glowAlpha),
+                                C.glassGlow.copy(alpha = glowAlpha * 0.3f),
+                                Color.Transparent,
+                            ),
+                            center = Offset(size.width / 2f, size.height / 2f),
+                            radius = size.width * 0.8f,
+                        ),
+                        center = Offset(size.width / 2f, size.height / 2f),
+                        radius = size.width * 0.8f,
+                    )
+                }
+            } else Modifier
+        )
         .combinedClickable(
             interactionSource = interaction,
             indication = null,
