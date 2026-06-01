@@ -21,7 +21,12 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.GraphicEq as OutlinedGraphicEq
+import androidx.compose.material.icons.outlined.LibraryMusic as OutlinedLibraryMusic
+import androidx.compose.material.icons.outlined.Radio as OutlinedRadio
+import androidx.compose.material.icons.outlined.Settings as OutlinedSettings
 import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.filled.Explore as FilledExplore
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -39,7 +45,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.beatdrop.kt.ui.components.GlassTabBar
+import com.beatdrop.kt.ui.components.GlassTabBar2
+import com.beatdrop.kt.ui.components.TabSpec2
 import com.beatdrop.kt.ui.components.MiniPlayer
 import com.beatdrop.kt.ui.components.TabSpec
 import com.beatdrop.kt.ui.screens.*
@@ -107,10 +114,10 @@ fun Root(vm: PlayerViewModel = viewModel()) {
 }
 
 private val TABS = listOf(
-    TabSpec("library",  "Library",  Icons.Filled.LibraryMusic),
-    TabSpec("discover", "Discover", Icons.Outlined.Explore),
-    TabSpec("radio",    "Radio",    Icons.Filled.Radio),
-    TabSpec("activity", "Activity", Icons.Filled.Settings),
+    TabSpec2("library",  "Library",  Icons.Filled.LibraryMusic, Icons.Outlined.LibraryMusic),
+    TabSpec2("discover", "Discover", Icons.Filled.Explore, Icons.Outlined.Explore),
+    TabSpec2("radio",    "Radio",    Icons.Filled.Radio, Icons.Outlined.Radio),
+    TabSpec2("activity", "Activity", Icons.Filled.Settings, Icons.Outlined.Settings),
 )
 
 private sealed interface Dest {
@@ -239,7 +246,7 @@ private fun TabsHost(
                     )
                 }
             }
-            GlassTabBar(TABS, tab) { onTab(it) }
+            GlassTabBar2(TABS, tab) { onTab(it) }
         }
 
         // Premium status bar frosted glass blur overlay
