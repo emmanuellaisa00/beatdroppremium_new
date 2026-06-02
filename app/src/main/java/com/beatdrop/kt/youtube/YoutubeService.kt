@@ -88,11 +88,11 @@ private data class YtClient(
 // PO Tokens in 2026, causing HTTP 403 blocks at playback time.
 private val YT_CLIENTS = listOf(
     YtClient(
-        name = "ANDROID_VR", clientName = "ANDROID_VR", clientVersion = "1.60.19",
+        name = "ANDROID_VR", clientName = "ANDROID_VR", clientVersion = "1.65.10",
         headers = mapOf(
-            "User-Agent"               to "com.google.android.apps.youtube.vr.oculus/1.60.19 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+            "User-Agent"               to "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
             "X-Youtube-Client-Name"    to "28",
-            "X-Youtube-Client-Version" to "1.60.19",
+            "X-Youtube-Client-Version" to "1.65.10",
         ),
         extraContext = JSONObject().apply {
             put("osName", "Android"); put("osVersion", "12L")

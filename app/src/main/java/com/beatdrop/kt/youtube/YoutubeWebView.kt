@@ -373,7 +373,8 @@ fun initHiddenYoutubeWebViews(activity: ComponentActivity): () -> Unit {
     // drawn — which would stop the embed player from ever firing the CDN request we
     // intercept. INVISIBLE keeps it in the layout/draw pass while staying off-screen.
     val container = android.widget.FrameLayout(activity).apply {
-        visibility = android.view.View.INVISIBLE
+        visibility = android.view.View.VISIBLE
+        alpha = 0.01f
     }
 
     // IFrame player WebView
