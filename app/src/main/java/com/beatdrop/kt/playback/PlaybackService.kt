@@ -53,28 +53,21 @@ class PlaybackService : MediaSessionService() {
     }
 
     /**
-     * Reads the #bd... fragment from the URI, removes it, and turns the encoded
-     * key/values into request headers (incl. User-Agent override) on the DataSpec.
+     * Reads our Base64url fragment from the URI (see [StreamHeaderCodec]), removes
+     * it, and applies the encoded key/values as request headers (incl. a User-Agent
+     * override) on the DataSpec. No-op for local files or any non-BeatDrop fragment.
      */
     private fun applyStreamHeaders(spec: DataSpec): DataSpec {
-        val uri = spec.uri
-        val fragment = uri.fragment ?: return spec
-        if (!fragment.contains("bdua=") && !fragment.contains("bdh_")) return spec
+        val decoded = StreamHeaderCodec.decode(spec.uri.fragment) ?: return spec
 
         val headers = HashMap<String, String>(spec.httpRequestHeaders)
-        fragment.split('&').forEach { pair ->
-            val eq = pair.indexOf('=')
-            if (eq <= 0) return@forEach
-            val k = Uri.decode(pair.substring(0, eq))
-            val v = Uri.decode(pair.substring(eq + 1))
-            when {
-                k == "bdua" -> headers["User-Agent"] = v
-                k.startsWith("bdh_") -> headers[k.removePrefix("bdh_")] = v
-            }
+        decoded.forEach { (k, v) ->
+            if (k == StreamHeaderCodec.userAgentKey()) headers["User-Agent"] = v
+            else headers[k] = v
         }
 
         // Strip our fragment so the CDN sees a clean URL.
-        val cleanUri: Uri = uri.buildUpon().fragment(null).build()
+        val cleanUri: Uri = spec.uri.buildUpon().fragment(null).build()
         return spec.buildUpon()
             .setUri(cleanUri)
             .setHttpRequestHeaders(headers)

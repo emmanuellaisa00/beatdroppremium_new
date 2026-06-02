@@ -89,11 +89,23 @@ private val audioPermission: String
 @Composable
 fun Root(vm: PlayerViewModel = viewModel()) {
     val perm = rememberPermissionState(audioPermission)
+    // POST_NOTIFICATIONS (Android 13+) — needed for the media-playback notification
+    // with transport controls. Playback works without it, but the notification is
+    // hidden and the foreground service is more likely to be killed when backgrounded.
+    val notifPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        rememberPermissionState(android.Manifest.permission.POST_NOTIFICATIONS) else null
+
     var showSplash by rememberSaveable { mutableStateOf(true) }
     if (showSplash) { SplashScreen(onDone = { showSplash = false }); return }
 
     LaunchedEffect(Unit) { vm.connect() }
-    LaunchedEffect(perm.status.isGranted) { if (perm.status.isGranted) vm.loadLibrary() }
+    LaunchedEffect(perm.status.isGranted) {
+        if (perm.status.isGranted) {
+            vm.loadLibrary()
+            // Best-effort: ask for notification permission once audio is granted.
+            if (notifPerm != null && !notifPerm.status.isGranted) notifPerm.launchPermissionRequest()
+        }
+    }
 
     var onboarded by rememberSaveable { mutableStateOf(false) }
     if (!onboarded && !perm.status.isGranted) {
