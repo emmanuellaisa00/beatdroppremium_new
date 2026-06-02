@@ -84,7 +84,8 @@ private data class YtClient(
 // any of these clients and play the result with any sensible UA.
 //
 // Order: ANDROID_VR first (most formats, no kid-content restriction in music
-// context), then ANDROID (also works), then IOS (smaller catalog).
+// context). Note: Standard ANDROID/IOS clients are removed because they require
+// PO Tokens in 2026, causing HTTP 403 blocks at playback time.
 private val YT_CLIENTS = listOf(
     YtClient(
         name = "ANDROID_VR", clientName = "ANDROID_VR", clientVersion = "1.60.19",
@@ -98,28 +99,6 @@ private val YT_CLIENTS = listOf(
             put("androidSdkVersion", 32)
             put("deviceMake", "Oculus"); put("deviceModel", "Quest 3")
         },
-    ),
-    YtClient(
-        name = "ANDROID", clientName = "ANDROID", clientVersion = "20.10.38",
-        headers = mapOf(
-            "User-Agent"               to "com.google.android.youtube/20.10.38 (Linux; U; Android 14) gzip",
-            "X-Youtube-Client-Name"    to "3",
-            "X-Youtube-Client-Version" to "20.10.38",
-        ),
-        extraContext = JSONObject()
-            .put("osName", "Android").put("osVersion", "14").put("androidSdkVersion", 34),
-    ),
-    YtClient(
-        name = "IOS", clientName = "IOS", clientVersion = "20.10.04",
-        headers = mapOf(
-            "User-Agent"               to "com.google.ios.youtube/20.10.04 (iPhone16,2; U; CPU iOS 18_3_1 like Mac OS X;)",
-            "X-Youtube-Client-Name"    to "5",
-            "X-Youtube-Client-Version" to "20.10.04",
-        ),
-        extraContext = JSONObject().apply {
-            put("deviceMake", "Apple"); put("deviceModel", "iPhone16,2")
-            put("osName", "iPhone");   put("osVersion", "18.3.1.22D72")
-        }
     ),
 )
 
