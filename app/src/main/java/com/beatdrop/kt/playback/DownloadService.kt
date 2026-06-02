@@ -3,6 +3,7 @@ package com.beatdrop.kt.playback
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -97,10 +98,15 @@ class DownloadService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(
-            NOTIF_ID,
-            buildNotification(this, "Downloading music…", 0, ongoing = true)
-        )
+        val notif = buildNotification(this, "Downloading music…", 0, ongoing = true)
+        // Android 14 (API 34) throws MissingForegroundServiceTypeException if the manifest
+        // declares android:foregroundServiceType but startForeground() is called without the
+        // type parameter.  Pass the type on API 29+ (when the 3-param overload was added).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(NOTIF_ID, notif)
+        }
         return START_STICKY
     }
 
