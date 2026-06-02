@@ -171,7 +171,7 @@ private fun ActiveDownloadRow(job: com.beatdrop.kt.youtube.DownloadJobV2) {
                     job.status == com.beatdrop.kt.youtube.DownloadStatusV2.QUEUED ||
                     job.status == com.beatdrop.kt.youtube.DownloadStatusV2.PAUSED) {
                     IconButton(onClick = {
-                        DownloadManagerV2.cancel(job.videoId)
+                        DownloadManagerV2.cancel(job.videoId, app)
                     }) {
                         Icon(Icons.Filled.Close, "Cancel", tint = C.textTertiary, modifier = Modifier.size(18.dp))
                     }
@@ -218,7 +218,7 @@ private fun HistoryRow(record: DownloadHistory.DownloadRecord) {
             IconButton(onClick = {
                 val file = File(record.filePath)
                 if (file.exists()) {
-                    ShareHelper.shareFile(ctx, file)
+                    ShareHelper.shareFile(ctx, file, record.title)
                 }
             }) {
                 Icon(Icons.Filled.Share, "Share", tint = C.textTertiary, modifier = Modifier.size(18.dp))

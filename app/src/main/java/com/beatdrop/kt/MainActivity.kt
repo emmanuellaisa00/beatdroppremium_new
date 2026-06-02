@@ -141,8 +141,7 @@ fun Root(vm: PlayerViewModel = viewModel()) {
     }
     if (!perm.status.isGranted) {
         PermissionPrompt(
-            onRequest = { perm.launchPermissionRequest() },
-            onGoBack = { onboarded = false }
+            onRequest = { perm.launchPermissionRequest() }
         )
         return
     }

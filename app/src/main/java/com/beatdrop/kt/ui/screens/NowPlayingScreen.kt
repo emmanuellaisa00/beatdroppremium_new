@@ -39,6 +39,7 @@ import com.beatdrop.kt.ui.components.pressableScale
 import com.beatdrop.kt.ui.components.rememberArtworkColor
 import com.beatdrop.kt.ui.theme.LocalAppColors
 
+@androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun NowPlayingScreen(
     vm: PlayerViewModel,

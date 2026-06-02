@@ -46,14 +46,14 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
     val suggestions by vm.suggestions.collectAsState()
     val history by vm.searchHistory.collectAsState()
     val jobs by vm.downloadJobs.collectAsState()
-    var snackbar by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(snackbar) {
-        snackbar?.let {
-            snackbar.showSnackbar(it)
-            snackbar = null
+    var snackbarMessage by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(snackbarMessage) {
+        snackbarMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            snackbarMessage = null
         }
     }
-    val snackbar = remember { SnackbarHostState() }
 
     val keyboardController = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
@@ -69,9 +69,9 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
     LaunchedEffect(message) {
         message?.let { msg ->
             val result = if (lastFailed != null) {
-                snackbar.showSnackbar(msg, actionLabel = "Retry")
+                snackbarHostState.showSnackbar(msg, actionLabel = "Retry")
             } else {
-                snackbar.showSnackbar(msg)
+                snackbarHostState.showSnackbar(msg)
             }
             if (result == SnackbarResult.ActionPerformed) {
                 vm.retryOnlinePlay()
@@ -249,7 +249,7 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
         }
 
         SnackbarHost(
-            snackbar,
+            snackbarHostState,
             Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 90.dp),
         )
     }

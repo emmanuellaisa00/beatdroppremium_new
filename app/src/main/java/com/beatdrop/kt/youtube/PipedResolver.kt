@@ -57,7 +57,7 @@ object PipedResolver {
         // Auto-refresh instance list every 10 minutes
         val now = System.currentTimeMillis()
         if (now - lastRefresh > 600_000L) {
-            kotlinx.coroutines.launch { runCatching { refreshInstanceList() } }
+            launch { runCatching { refreshInstanceList() } }
             lastRefresh = now
         }
         val list = instances
@@ -175,7 +175,7 @@ object PipedResolver {
                 val merged = LinkedHashSet<String>()
                 merged.addAll(instances)
                 merged.addAll(fresh)
-                instances = merged.toList()
+                instances = merged.toMutableList()
             }
         }
     }
