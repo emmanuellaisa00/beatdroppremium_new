@@ -4,6 +4,8 @@ import com.beatdrop.kt.DebugLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -146,7 +148,7 @@ object YouTubeTrending {
                     ?: item.optString("videoId").ifBlank { null }
                     ?: return@mapNotNull null
 
-                val title = item.optJSONObject("flexColumns")
+                val title = item.optJSONArray("flexColumns")
                     ?.optJSONObject(0)?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
                     ?.optJSONObject("text")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
                     ?: item.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
@@ -197,7 +199,7 @@ object YouTubeTrending {
                         ?: o.optJSONObject("musicTwoRowItemRenderer")
                     if (renderer != null) {
                         val title = renderer.optJSONObject("text")?.optString("simpleText")
-                            ?: renderer.optJSONObject("title")?.optJSONObject("runs")
+                            ?: renderer.optJSONObject("title")?.optJSONArray("runs")
                                 ?.optJSONObject(0)?.optString("text")
                             ?: return
                         val browseId = renderer.optJSONObject("navigationEndpoint")

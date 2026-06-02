@@ -4,6 +4,8 @@ import com.beatdrop.kt.DebugLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -80,10 +82,12 @@ object YouTubePlaylist {
                 .build()
 
             try {
-                val contJson = com.beatdrop.kt.youtube.okHttp.newCall(contReq).execute().use { resp ->
-                    if (!resp.isSuccessful) break
-                    JSONObject(resp.body!!.string())
+                val response = com.beatdrop.kt.youtube.okHttp.newCall(contReq).execute()
+                val contJson = response.use { resp ->
+                    if (!resp.isSuccessful) null
+                    else JSONObject(resp.body!!.string())
                 }
+                if (contJson == null) break
                 extractPlaylistItems(contJson, items)
                 contToken = extractContinuation(contJson)
             } catch (_: Exception) { break }
@@ -94,7 +98,7 @@ object YouTubePlaylist {
 
     private fun extractPlaylistTitle(json: JSONObject): String {
         val header = json.optJSONObject("header")
-            ?: json.optJSONObject("microformat")?.optJSONObject("microformatDataRenderer)
+            ?: json.optJSONObject("microformat")?.optJSONObject("microformatDataRenderer")
         return header?.optJSONObject("musicDetailHeaderRenderer")
             ?.optJSONObject("title")?.optString("simpleText")
             ?: header?.optJSONObject("playlistHeaderRenderer")

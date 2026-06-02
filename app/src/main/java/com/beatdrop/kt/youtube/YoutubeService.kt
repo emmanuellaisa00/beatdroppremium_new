@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicLong
 // ─── HTTP Clients ─────────────────────────────────────────────────────────────
 
 // Search/API client — generous read timeout for large JSON payloads on slow networks
-private val okHttp = OkHttpClient.Builder()
+internal val okHttp = OkHttpClient.Builder()
     .connectTimeout(10, TimeUnit.SECONDS)
     .readTimeout(20, TimeUnit.SECONDS)
     .writeTimeout(10, TimeUnit.SECONDS)
@@ -32,7 +32,7 @@ private val okHttp = OkHttpClient.Builder()
 
 // Dedicated download client — no read timeout ceiling so large files complete
 // on slow connections without SocketTimeoutException mid-transfer
-private val downloadHttp = OkHttpClient.Builder()
+internal val downloadHttp = OkHttpClient.Builder()
     .connectTimeout(15, TimeUnit.SECONDS)
     .writeTimeout(30, TimeUnit.SECONDS)
     .readTimeout(0, TimeUnit.SECONDS)    // 0 = infinite — OkHttp will not timeout reads
