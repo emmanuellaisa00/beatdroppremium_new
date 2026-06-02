@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.beatdrop.kt.ui.theme.LocalAppColors
 import com.beatdrop.kt.ui.theme.Spacing
+import com.beatdrop.kt.ui.theme.Radius
 import com.beatdrop.kt.ui.theme.Type
 
 /** Section header: bold title + optional trailing action, used across screens. */

@@ -189,9 +189,6 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit, onOpenEq: () -> Unit
     }
 }
 
-// ─── Liquid Glass Card ───────────────────────────────────────────────────────
-
-@Composable
 
 @Composable
 private fun GlassDivider() {

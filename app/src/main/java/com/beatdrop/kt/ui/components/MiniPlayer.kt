@@ -160,7 +160,7 @@ fun MiniPlayer(
                     .background(C.bg3)
             ) {
                 AsyncImage(
-                    model = ImageRequest.Builder(ctx).data(track.artworkUri).crossfade(true).size(96).build(),
+                    model = ImageRequest.Builder(ctx).data(track.artworkUri).crossfade(true).size(coil.size.Size(96, 96)).build(),
                     contentDescription = null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
