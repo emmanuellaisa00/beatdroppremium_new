@@ -475,7 +475,8 @@ suspend fun getStream(videoId: String): ResolvedStream = withContext(Dispatchers
                     .build()
             ).execute().use { resp ->
                 if (!resp.isSuccessful) null else JSONObject(resp.body!!.string())
-            } ?: run {
+            }
+            if (data == null) {
                 com.beatdrop.kt.DebugLog.w("resolve", "invidious ${instance.removePrefix("https://")}: failed")
                 continue
             }
