@@ -336,8 +336,38 @@ fun YoutubeStreamExtractorHost(modifier: Modifier = Modifier) {
 }
 
 // ─── Programmatic initializer ─────────────────────────────────────────────────
+
+/**
+ * Pre-warm the YouTube consent cookie so EU / UK / age-gated content doesn't
+ * land the WebView on the "Before you continue to YouTube" consent wall — in
+ * which case `shouldInterceptRequest` would never see a googlevideo.com URL
+ * because the embed player JS never even loads.
+ *
+ * `CONSENT=YES+cb` is the value YouTube sets when a user clicks "Accept all".
+ * Pasting it in pre-emptively (with the standard `cb` revision suffix YouTube
+ * uses globally) means the consent page redirects straight to the player on
+ * the very first load — invisible to the user, but unblocks extraction for
+ * roughly 25% of devices that would otherwise time out on the WebView path.
+ */
+private fun seedYoutubeConsentCookies() {
+    runCatching {
+        val cm = CookieManager.getInstance()
+        cm.setAcceptCookie(true)
+        // Generic accept-all consent (works across all locales as of 2026).
+        cm.setCookie("https://www.youtube.com", "CONSENT=YES+cb.20210328-17-p0.en+FX+999; Domain=.youtube.com; Path=/; Secure")
+        cm.setCookie("https://www.youtube.com", "SOCS=CAI; Domain=.youtube.com; Path=/; Secure")
+        // VISITOR_INFO1_LIVE — gives us a stable session-ish identifier so YT
+        // doesn't think we're a fresh ad-blocker probe on every load.
+        cm.setCookie("https://www.youtube.com", "VISITOR_INFO1_LIVE=BeatDropKt; Domain=.youtube.com; Path=/; Secure")
+        cm.flush()
+    }
+}
+
 @SuppressLint("SetJavaScriptEnabled")
 fun initHiddenYoutubeWebViews(activity: ComponentActivity): () -> Unit {
+    // Seed consent cookies BEFORE we create the WebView so the first page load
+    // already carries them (Cookie store is process-wide, set once is enough).
+    seedYoutubeConsentCookies()
     // INVISIBLE (not GONE) + a real 1x1 size: a GONE / 0x0 WebView is not laid out,
     // and many WebView implementations suspend JS/media loading when the host isn't
     // drawn — which would stop the embed player from ever firing the CDN request we

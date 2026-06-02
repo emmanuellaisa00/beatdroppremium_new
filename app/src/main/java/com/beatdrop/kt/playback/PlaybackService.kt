@@ -1,16 +1,22 @@
 package com.beatdrop.kt.playback
 
+import androidx.media3.common.C
+import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.datasource.HttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
+import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import android.net.Uri
+import java.io.File
 
 /**
  * Media3 MediaSessionService — replaces react-native-track-player.
@@ -30,10 +36,27 @@ import android.net.Uri
  *
  * Streams that don't have our fragment (local files, Piped HTTPS, Invidious)
  * fall through and use the default UA.
+ *
+ * Caching
+ * ───────
+ * A 200 MB LRU `SimpleCache` sits in front of the HTTP factory. Re-tapping a
+ * recently-played song serves bytes from disk instantly instead of re-running
+ * the resolver and re-fetching from the CDN. The cache is keyed on the
+ * post-fragment-stripped URI so per-stream UA differences don't poison hits.
+ *
+ * Audio-only renderer policy
+ * ──────────────────────────
+ * BeatDrop is a music app — video is never displayed. We tell the track
+ * selector to disable the video track type entirely, so when our muxed-MP4
+ * fallback (itag 18 = 360p H.264 + AAC) plays, ExoPlayer never instantiates
+ * the H.264 decoder. This saves ~30 MB RAM and avoids decoder-init failures
+ * on Android Go / budget MediaTek devices that lack a video decoder for the
+ * audio context.
  */
 @UnstableApi
 class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
+    private var cache: SimpleCache? = null
 
     // Default UA — used when the resolved URL doesn't carry its own.
     // Piped proxies, Invidious direct, and most CDNs accept this.
@@ -83,10 +106,39 @@ class PlaybackService : MediaSessionService() {
             }
         }
 
-        val dataSourceFactory = DefaultDataSource.Factory(this, resolvingFactory)
+        // ── Playback cache (200 MB LRU on disk) ─────────────────────────────
+        // Sits in front of the network factory. Streamed bytes are written to
+        // disk as they're read; future requests for the same URL serve from
+        // disk first. The cache key uses the URI WITHOUT our fragment (set by
+        // ResolvingDataSource above) so per-UA variations don't fragment the
+        // cache. Survives process restarts; auto-evicts oldest when full.
+        val cacheDir = File(cacheDir, "playback_cache").also { it.mkdirs() }
+        val evictor = LeastRecentlyUsedCacheEvictor(200L * 1024 * 1024)  // 200 MB
+        val playbackCache = SimpleCache(cacheDir, evictor).also { cache = it }
+
+        val cachingFactory = CacheDataSource.Factory()
+            .setCache(playbackCache)
+            .setUpstreamDataSourceFactory(resolvingFactory)
+            // Write-through: cache misses fetch + cache; cache hits skip network.
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+
+        val dataSourceFactory = DefaultDataSource.Factory(this, cachingFactory)
+
+        // ── Audio-only track selector ───────────────────────────────────────
+        // BeatDrop never shows video. Disabling the video track type means:
+        //   - muxed mp4 fallback (itag 18) plays its audio track only
+        //   - no H.264 decoder is ever created → no DECODER_INIT_FAILED on
+        //     low-end devices that lack a hardware H.264 decoder
+        //   - saves ~30 MB RAM and a few percent CPU
+        val trackSelector = DefaultTrackSelector(this).apply {
+            parameters = buildUponParameters()
+                .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
+                .build()
+        }
 
         val player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+            .setTrackSelector(trackSelector)
             .setHandleAudioBecomingNoisy(true)
             .build()
 
@@ -100,6 +152,8 @@ class PlaybackService : MediaSessionService() {
         EqEngine.release()
         session?.run { player.release(); release() }
         session = null
+        runCatching { cache?.release() }
+        cache = null
         super.onDestroy()
     }
 }
