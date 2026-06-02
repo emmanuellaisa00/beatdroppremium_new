@@ -425,19 +425,29 @@ suspend fun getStream(videoId: String): ResolvedStream = withContext(Dispatchers
                 com.beatdrop.kt.DebugLog.w("resolve", "${client.name}: OK but no streamingData")
                 continue
             }
-            val url = resolveBestAudio(streamingData.optJSONArray("adaptiveFormats"))
+            // 1) Prefer audio-only (best quality, smallest data).
+            // 2) Fall back to MUXED/progressive (video+audio in one file, e.g. itag 18).
+            //    Muxed formats are far more lenient (rarely PO-token-gated), so this is
+            //    the SnapTube trick: grab the full stream and just play the audio out of it.
+            var pickedKind = "audio"
+            var url = resolveBestAudio(streamingData.optJSONArray("adaptiveFormats"))
                 ?: resolveBestAudio(streamingData.optJSONArray("formats"))
+            if (url.isNullOrBlank()) {
+                url = resolveBestMuxed(streamingData.optJSONArray("formats"))
+                    ?: resolveBestMuxed(streamingData.optJSONArray("adaptiveFormats"))
+                if (!url.isNullOrBlank()) pickedKind = "muxed"
+            }
             if (!url.isNullOrBlank()) {
                 val ua = client.headers["User-Agent"] ?: IOS_UA
                 val extra = buildMap {
                     client.headers["Origin"]?.let { put("Origin", it) }
                     client.headers["Referer"]?.let { put("Referer", it) }
                 }
-                com.beatdrop.kt.DebugLog.i("resolve", "✅ ${client.name} resolved → ${com.beatdrop.kt.DebugLog.shortUrl(url)}")
+                com.beatdrop.kt.DebugLog.i("resolve", "✅ ${client.name} resolved ($pickedKind) → ${com.beatdrop.kt.DebugLog.shortUrl(url)}")
                 val s = ResolvedStream(url, ua, extra)
                 setCachedStream(videoId, s); return@withContext s
             } else {
-                com.beatdrop.kt.DebugLog.w("resolve", "${client.name}: OK but no playable audio format (all ciphered & undecipherable?)")
+                com.beatdrop.kt.DebugLog.w("resolve", "${client.name}: OK but no playable audio OR muxed format")
             }
         } catch (e: Exception) {
             com.beatdrop.kt.DebugLog.w("resolve", "${client.name}: ${e.javaClass.simpleName} ${e.message}")
@@ -742,6 +752,38 @@ private suspend fun resolveBestAudio(formats: JSONArray?): String? {
     // Try formats best-first; first one that resolves wins.
     for (f in audio) {
         // Plain URL? Still run it through the cipher so the n-throttle param is fixed.
+        val resolved = runCatching { YoutubeCipher.resolveFormatUrl(f) }.getOrNull()
+        if (!resolved.isNullOrBlank()) return resolved
+    }
+    return null
+}
+
+/**
+ * MUXED / progressive fallback (the SnapTube approach).
+ *
+ * Picks a combined video+audio stream (e.g. itag 18 = 360p MP4 w/ AAC, itag 22 =
+ * 720p) and resolves it through the cipher if needed. These formats are far less
+ * likely to be PO-token-gated than audio-only, so they massively raise the
+ * resolve success rate. ExoPlayer plays the file and the user only hears audio.
+ *
+ * Prefers the SMALLEST muxed format (lowest itag/bitrate) to save data — we don't
+ * need the video pixels, just the audio inside.
+ */
+private suspend fun resolveBestMuxed(formats: JSONArray?): String? {
+    if (formats == null) return null
+    // Known progressive (muxed video+audio) itags, smallest first.
+    val muxedItags = setOf(18, 22, 59, 37, 43)
+    val muxed = (0 until formats.length()).map { formats.getJSONObject(it) }
+        .filter { f ->
+            val mt = (f.optString("mimeType") + f.optString("type")).lowercase()
+            val itag = f.optInt("itag")
+            // Muxed = has both audio + video codecs (mimeType lists two codecs) OR a known muxed itag.
+            val isVideoMp4 = mt.contains("video/") && mt.contains(",") // two codecs => has audio
+            itag in muxedItags || isVideoMp4
+        }
+        .sortedBy { f -> f.optLong("bitrate").coerceAtLeast(f.optLong("averageBitrate")) } // smallest first
+
+    for (f in muxed) {
         val resolved = runCatching { YoutubeCipher.resolveFormatUrl(f) }.getOrNull()
         if (!resolved.isNullOrBlank()) return resolved
     }
