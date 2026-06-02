@@ -44,6 +44,7 @@ private val downloadHttp = OkHttpClient.Builder()
 private const val YT_PLAYER = "https://www.youtube.com/youtubei/v1/player"
 private const val YT_SEARCH = "https://www.youtube.com/youtubei/v1/search"
 private const val IOS_UA    = "com.google.ios.youtube/20.03.02 (iPhone16,2; U; CPU iOS 18_2_1 like Mac OS X;)"
+private const val SVC_CHROME_UA = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 
 // Parallel chunk count and minimum file size to bother chunking
 private const val CHUNK_COUNT         = 4
@@ -144,19 +145,34 @@ private val YT_CLIENTS = listOf(
     ),
 )
 
-// ─── URL Cache (4-hour TTL) ───────────────────────────────────────────────────
-private data class CacheEntry(val url: String, val cachedAt: Long)
-private val urlCache = ConcurrentHashMap<String, CacheEntry>()
-private const val URL_TTL_MS = 4 * 60 * 60 * 1000L
+// ─── Resolved stream (URL + the exact headers/UA that URL must be fetched with) ─
+/**
+ * A googlevideo CDN URL is bound to the client identity that resolved it. ExoPlayer
+ * MUST replay the same User-Agent (and Referer/Origin for web/embed clients) or the
+ * CDN returns 403. We therefore carry the headers alongside the URL.
+ */
+data class ResolvedStream(
+    val url: String,
+    val userAgent: String,
+    val headers: Map<String, String> = emptyMap(),
+)
 
-private fun getCachedUrl(videoId: String): String? {
+// ─── URL Cache (90-minute TTL — googlevideo tokens expire fairly fast) ─────────
+private data class CacheEntry(val stream: ResolvedStream, val cachedAt: Long)
+private val urlCache = ConcurrentHashMap<String, CacheEntry>()
+private const val URL_TTL_MS = 90 * 60 * 1000L
+
+private fun getCachedStream(videoId: String): ResolvedStream? {
     val e = urlCache[videoId] ?: return null
     if (System.currentTimeMillis() - e.cachedAt > URL_TTL_MS) { urlCache.remove(videoId); return null }
-    return e.url
+    return e.stream
 }
-private fun setCachedUrl(videoId: String, url: String) {
-    urlCache[videoId] = CacheEntry(url, System.currentTimeMillis())
+private fun setCachedStream(videoId: String, stream: ResolvedStream) {
+    urlCache[videoId] = CacheEntry(stream, System.currentTimeMillis())
 }
+
+/** Drop a cached URL — used when ExoPlayer reports a 403 so the next attempt re-resolves. */
+fun invalidateStreamCache(videoId: String) { urlCache.remove(videoId) }
 
 // ─── Application context ──────────────────────────────────────────────────────
 object YoutubeService {
@@ -351,16 +367,38 @@ suspend fun getSearchSuggestions(query: String): List<String> =
  *   6. MWEB               — Web fallback (PO token usually required).
  *   7. Invidious          — Public instances as last resort.
  */
-suspend fun getStreamUrl(videoId: String): String {
-    getCachedUrl(videoId)?.let { return it }
+/** Backward-compatible accessor — returns just the URL (used by the downloader). */
+suspend fun getStreamUrl(videoId: String): String = getStream(videoId).url
 
-    // Strategy 1 — WebView extractor (primary, SnapTube approach)
+/**
+ * Resolve a directly-playable audio stream + the headers it must be fetched with.
+ *
+ * Now handles ciphered formats: when a /player response returns `signatureCipher`
+ * (the common case in 2026), we download the player's base.js once, extract the
+ * signature + n-throttle transforms, and run them with Rhino — the same approach
+ * yt-dlp / NewPipe use. This is the piece that makes playback reliable like SnapTube.
+ */
+suspend fun getStream(videoId: String): ResolvedStream = withContext(Dispatchers.IO) {
+    getCachedStream(videoId)?.let { return@withContext it }
+
+    // Strategy 1 — WebView extractor (Chrome's V8 deciphers everything natively)
     if (YoutubeExtractor.isConfigured) {
         try {
             val url = YoutubeExtractor.extractStreamUrl(videoId, 15_000)
-            if (!url.isNullOrBlank()) { setCachedUrl(videoId, url); return url }
+            if (!url.isNullOrBlank()) {
+                // The WebView fetched it as Chrome — replay that UA in ExoPlayer.
+                val s = ResolvedStream(url, SVC_CHROME_UA, mapOf(
+                    "Referer" to "https://www.youtube.com/",
+                    "Origin"  to "https://www.youtube.com",
+                ))
+                setCachedStream(videoId, s); return@withContext s
+            }
         } catch (_: Exception) {}
     }
+
+    // Prime the cipher once (best-effort) so ciphered formats from the API resolve.
+    val playerJsUrl = runCatching { YoutubeCipher.discoverPlayerJsUrl() }.getOrNull()
+    if (playerJsUrl != null) runCatching { YoutubeCipher.ensurePlayer(playerJsUrl) }
 
     // Strategy 2–6 — Innertube /player API clients (ordered by PO-token-free first)
     for (client in YT_CLIENTS) {
@@ -379,14 +417,23 @@ suspend fun getStreamUrl(videoId: String): String {
             if (data.optJSONObject("playabilityStatus")?.optString("status") != "OK") continue
 
             val streamingData = data.optJSONObject("streamingData") ?: continue
-            // Try adaptiveFormats first, then fall back to regular formats
-            val url = getBestAudioUrl(streamingData.optJSONArray("adaptiveFormats"))
-                ?: getBestAudioUrl(streamingData.optJSONArray("formats"))
-            if (!url.isNullOrBlank()) { setCachedUrl(videoId, url); return url }
+            // Try adaptiveFormats first, then fall back to regular formats.
+            // resolveBestAudio handles BOTH plain `url` and `signatureCipher` formats.
+            val url = resolveBestAudio(streamingData.optJSONArray("adaptiveFormats"))
+                ?: resolveBestAudio(streamingData.optJSONArray("formats"))
+            if (!url.isNullOrBlank()) {
+                val ua = client.headers["User-Agent"] ?: IOS_UA
+                val extra = buildMap {
+                    client.headers["Origin"]?.let { put("Origin", it) }
+                    client.headers["Referer"]?.let { put("Referer", it) }
+                }
+                val s = ResolvedStream(url, ua, extra)
+                setCachedStream(videoId, s); return@withContext s
+            }
         } catch (_: Exception) {}
     }
 
-    // Strategy 7 — Invidious public instances
+    // Strategy 7 — Invidious public instances (URLs are already deciphered)
     for (instance in INVIDIOUS_INSTANCES) {
         try {
             val data = okHttp.newCall(
@@ -400,7 +447,10 @@ suspend fun getStreamUrl(videoId: String): String {
                 ?: data.optJSONArray("formatStreams")?.let {
                     if (it.length() > 0) it.getJSONObject(0).optString("url") else null
                 }
-            if (!url.isNullOrBlank()) { setCachedUrl(videoId, url); return url }
+            if (!url.isNullOrBlank()) {
+                val s = ResolvedStream(url, IOS_UA)
+                setCachedStream(videoId, s); return@withContext s
+            }
         } catch (_: Exception) {}
     }
 
@@ -425,7 +475,11 @@ suspend fun downloadYoutubeTrack(
     val dir = YoutubeService.downloadDir
         ?: throw Exception("External storage not available")
 
-    val streamUrl = getStreamUrl(result.videoId)
+    val stream = getStream(result.videoId)
+    val streamUrl = stream.url
+    // Replay the resolving client's UA/headers so the CDN doesn't 403 the download.
+    val dlUa = stream.userAgent
+    val dlHeaders = stream.headers
 
     val safeTitle = result.title.replace(Regex("[^a-zA-Z0-9 \\-_]"), "").take(80).trim()
     val fileExt = when {
@@ -438,16 +492,19 @@ suspend fun downloadYoutubeTrack(
 
     // HEAD probe: get content-length and check Range support
     val head = downloadHttp.newCall(
-        Request.Builder().url(streamUrl).head().header("User-Agent", IOS_UA).build()
+        Request.Builder().url(streamUrl).head()
+            .header("User-Agent", dlUa)
+            .apply { dlHeaders.forEach { (k, v) -> header(k, v) } }
+            .build()
     ).execute()
     val contentLength  = head.header("Content-Length")?.toLongOrNull() ?: 0L
     val acceptsRanges  = head.header("Accept-Ranges")
         ?.equals("bytes", ignoreCase = true) == true
 
     if (acceptsRanges && contentLength >= CHUNK_MIN_BYTES) {
-        downloadChunked(streamUrl, filePath, contentLength, onProgress)
+        downloadChunked(streamUrl, filePath, contentLength, dlUa, dlHeaders, onProgress)
     } else {
-        downloadSerial(streamUrl, filePath, contentLength, onProgress)
+        downloadSerial(streamUrl, filePath, contentLength, dlUa, dlHeaders, onProgress)
     }
 
     check(filePath.exists() && filePath.length() >= 1024) {
@@ -492,6 +549,8 @@ private suspend fun downloadChunked(
     url: String,
     file: File,
     contentLength: Long,
+    ua: String,
+    extraHeaders: Map<String, String>,
     onProgress: (DownloadProgress) -> Unit,
 ) = withContext(Dispatchers.IO) {
     val chunkSize = (contentLength + CHUNK_COUNT - 1) / CHUNK_COUNT
@@ -509,7 +568,8 @@ private suspend fun downloadChunked(
                 val req = Request.Builder()
                     .url(url)
                     .header("Range", "bytes=$start-$end")
-                    .header("User-Agent", IOS_UA)
+                    .header("User-Agent", ua)
+                    .apply { extraHeaders.forEach { (k, v) -> header(k, v) } }
                     .build()
 
                 downloadHttp.newCall(req).execute().use { resp ->
@@ -539,9 +599,14 @@ private suspend fun downloadSerial(
     url: String,
     file: File,
     contentLength: Long,
+    ua: String,
+    extraHeaders: Map<String, String>,
     onProgress: (DownloadProgress) -> Unit,
 ) = withContext(Dispatchers.IO) {
-    val req = Request.Builder().url(url).header("User-Agent", IOS_UA).build()
+    val req = Request.Builder().url(url)
+        .header("User-Agent", ua)
+        .apply { extraHeaders.forEach { (k, v) -> header(k, v) } }
+        .build()
     downloadHttp.newCall(req).execute().use { resp ->
         check(resp.isSuccessful) { "Download failed (HTTP ${resp.code})" }
         val body = resp.body ?: throw Exception("Empty response body")
@@ -565,11 +630,11 @@ private suspend fun downloadSerial(
 
 // ─── Convert search result → Track (for streaming) ───────────────────────────
 suspend fun youtubeResultToTrack(result: OnlineResult): Track {
-    val streamUrl = getStreamUrl(result.videoId)
+    val stream = getStream(result.videoId)
     val (title, artist) = parseTitle(result.title, result.author)
     return Track(
         id        = "yt_${result.videoId}",
-        uri       = Uri.parse(streamUrl),
+        uri       = Uri.parse(stream.url),
         title     = title,
         artist    = artist,
         album     = result.author,
@@ -578,6 +643,9 @@ suspend fun youtubeResultToTrack(result: OnlineResult): Track {
         data      = null,
         dateAdded = System.currentTimeMillis(),
         artworkOverride = result.thumbnailUrl,
+        streamUserAgent = stream.userAgent,
+        streamHeaders   = stream.headers,
+        sourceVideoId   = result.videoId,
     )
 }
 
@@ -606,22 +674,42 @@ private fun buildPlayerBody(videoId: String, client: YtClient): String =
         client.bodyExtra.keys().forEach { k -> put(k, client.bodyExtra.get(k)) }
     }.toString()
 
+/** Plain-URL selector — used for Invidious (already deciphered). */
 private fun getBestAudioUrl(formats: JSONArray?): String? =
     getBestAudioFormat(formats)?.let { f ->
         f.optString("url").ifBlank { null }
     }
 
 /**
- * Selects the highest-bitrate audio format.
- * Only returns formats with a plain URL — signatureCipher formats are skipped
- * because they require JS-based decipher which we cannot do server-side.
- * The WebView extractor (Strategy 1) handles those cases natively.
+ * Selects the highest-bitrate audio format and resolves it to a playable URL,
+ * deciphering `signatureCipher` formats via YoutubeCipher when needed.
+ * This is what lets us play the (now-common) protected formats SnapTube handles.
+ */
+private suspend fun resolveBestAudio(formats: JSONArray?): String? {
+    if (formats == null) return null
+    val audio = (0 until formats.length()).map { formats.getJSONObject(it) }
+        .filter { f ->
+            val mt = (f.optString("mimeType") + f.optString("type")).lowercase()
+            mt.contains("audio/")
+        }
+        .sortedByDescending { f -> f.optLong("bitrate").coerceAtLeast(f.optLong("averageBitrate")) }
+
+    // Try formats best-first; first one that resolves wins.
+    for (f in audio) {
+        // Plain URL? Still run it through the cipher so the n-throttle param is fixed.
+        val resolved = runCatching { YoutubeCipher.resolveFormatUrl(f) }.getOrNull()
+        if (!resolved.isNullOrBlank()) return resolved
+    }
+    return null
+}
+
+/**
+ * Plain-URL-only selector (no decipher) — retained for Invidious responses which
+ * already provide fully-resolved URLs.
  */
 private fun getBestAudioFormat(formats: JSONArray?): JSONObject? {
     if (formats == null) return null
     val all = (0 until formats.length()).map { formats.getJSONObject(it) }
-
-    // Only use formats with a plain URL (no cipher decoding needed)
     val withUrl = all.filter { f ->
         val mt = (f.optString("mimeType") + f.optString("type")).lowercase()
         mt.contains("audio/") && f.optString("url").isNotBlank()

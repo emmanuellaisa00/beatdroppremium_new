@@ -93,6 +93,9 @@ dependencies {
     implementation("androidx.media3:media3-session:$media3")
     implementation("androidx.media3:media3-common:$media3")
     implementation("androidx.media3:media3-ui:$media3")
+    // Adaptive streaming support — some resolved YouTube/Invidious URLs are HLS/DASH manifests
+    implementation("androidx.media3:media3-exoplayer-hls:$media3")
+    implementation("androidx.media3:media3-exoplayer-dash:$media3")
 
     // Coil image loading
     implementation("io.coil-kt:coil-compose:2.6.0")
@@ -112,6 +115,10 @@ dependencies {
 
     // OkHttp — for Innertube search, stream URL resolution, and downloads
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Mozilla Rhino — evaluates YouTube's base.js signature + n-throttle JS
+    // (the same approach NewPipe/yt-dlp use to decipher protected stream URLs)
+    implementation("org.mozilla:rhino:1.7.14")
 
     // Unit tests
     testImplementation("junit:junit:4.13.2")

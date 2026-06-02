@@ -17,6 +17,12 @@ data class Track(
     val data: String?,          // file path — used for sibling .lrc lookup
     val dateAdded: Long,
     val artworkOverride: String? = null,  // YouTube thumbnail or downloaded art path
+    // For streamed (yt_) tracks: the exact UA/headers the googlevideo CDN URL was
+    // resolved with. ExoPlayer must replay these or the CDN returns 403.
+    val streamUserAgent: String? = null,
+    val streamHeaders: Map<String, String> = emptyMap(),
+    // The source videoId (for 403 re-resolution). Empty for local files.
+    val sourceVideoId: String? = null,
 ) {
     val artworkUri: Uri
         get() = if (!artworkOverride.isNullOrBlank()) Uri.parse(artworkOverride)

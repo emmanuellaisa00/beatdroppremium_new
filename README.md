@@ -45,12 +45,33 @@ Push to GitHub → **GitHub Actions builds an installable APK**.
 - **Equalizer** — REAL native DSP (android.media.audiofx): per-band sliders, presets, bass boost ✅ *(the RN app had no working DSP)*
 - **Online Search** — fully wired: search box, results, tap-to-play, download button; backed by a pluggable `SearchProvider` + `YoutubeExtractor` hook (you supply those — see INTEGRATION.md) ✅/⚠️
 
-## ⚠️ YouTube extraction (intentionally a shell)
+## 🔊 YouTube extraction (now implemented — SnapTube-style)
 
-`youtube/YoutubeWebView.kt` + `YoutubeExtractor.extractStreamUrl()` provide the
-WebView host and a hook, but **the audio stream-extraction logic is not
-implemented** (YouTube ToS / copyright). The Search UI is wired end-to-end; plug
-your own extraction into `YoutubeExtractor` to populate results and play/download.
+Search → tap → stream is fully wired and functional:
+
+1. **WebView extractor (primary)** — `YoutubeExtractor` loads the embed player in a
+   hidden WebView; Chrome's V8 runs YouTube's real `base.js`, so the signature /
+   `n`-throttle / cipher are deciphered natively. We intercept the resulting
+   `googlevideo.com` audio request via `shouldInterceptRequest`. This is robust
+   against player obfuscation changes (the same reason it doesn't break like
+   regex extractors do).
+2. **Innertube `/player` clients (secondary)** — ANDROID_VR / WEB_EMBEDDED /
+   TV_EMBEDDED / ANDROID / IOS / MWEB, in PO-token-free-first order. Ciphered
+   formats are deciphered by `YoutubeCipher` (Mozilla Rhino runs the extracted
+   `sig` + `nsig` JS functions — the yt-dlp/NewPipe approach).
+3. **Invidious (last resort)** — public instances return already-resolved URLs.
+
+The resolved URL is bound to the resolving client's identity, so the **exact
+User-Agent + Origin/Referer are carried into ExoPlayer** (encoded on the MediaItem,
+re-applied by a `ResolvingDataSource` in `PlaybackService`) to avoid CDN 403s.
+On a `403`/expired-token mid-playback, the player **auto re-resolves and resumes**.
+
+> ⚠️ **Note:** YouTube's 2026 player obfuscation can defeat the native regex
+> decipher (yt-dlp itself moved to a full JS runtime for this). When that happens
+> the WebView path (step 1) still works, since it uses the browser's own JS engine.
+>
+> ⚖️ **Legal:** Streaming YouTube audio this way may violate YouTube's Terms of
+> Service. Use a licensed/royalty-free catalog for production.
 
 ---
 

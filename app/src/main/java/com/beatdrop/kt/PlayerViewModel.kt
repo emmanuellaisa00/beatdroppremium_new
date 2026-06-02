@@ -232,6 +232,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     @Volatile private var onlineTransitionInProgress = false
+    // Guards against infinite re-resolve loops on a permanently-dead stream.
+    @Volatile private var lastRecoveredVideoId: String? = null
 
     private fun attach() {
         controller?.addListener(object : Player.Listener {
@@ -249,6 +251,43 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 _volume.value = controller?.volume ?: 1f
             }
             override fun onPlayerError(error: PlaybackException) {
+                // 403 / expired-token recovery: googlevideo URLs expire and are
+                // IP/client-bound. On a bad HTTP status for a streamed track, drop
+                // the cached URL and silently re-resolve + resume once.
+                val cur = _current.value
+                if (error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS &&
+                    cur != null && cur.isStreaming && cur.sourceVideoId != null &&
+                    cur.sourceVideoId != lastRecoveredVideoId
+                ) {
+                    lastRecoveredVideoId = cur.sourceVideoId
+                    val resumeAt = controller?.currentPosition ?: 0L
+                    viewModelScope.launch {
+                        invalidateStreamCache(cur.sourceVideoId!!)
+                        val fresh = runCatching {
+                            youtubeResultToTrack(
+                                OnlineResult(
+                                    videoId = cur.sourceVideoId!!,
+                                    title = cur.title, author = cur.artist,
+                                    thumbnailUrl = cur.artworkOverride,
+                                    durationText = "", durationSecs = (cur.durationMs / 1000).toInt(),
+                                )
+                            )
+                        }.getOrNull()
+                        if (fresh != null) {
+                            _ytTrackCache[fresh.id] = fresh
+                            val c = controller ?: return@launch
+                            onlineTransitionInProgress = true
+                            c.setMediaItem(fresh.toMediaItem()); c.prepare()
+                            c.seekTo(resumeAt); c.play()
+                            onlineTransitionInProgress = false
+                            _current.value = fresh
+                        } else {
+                            _onlineMessage.value = "Stream expired. Try playing again."
+                        }
+                    }
+                    return
+                }
+
                 val msg = when (error.errorCode) {
                     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
                     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ->
@@ -529,6 +568,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         _current.value = tempTrack
         _fetchingVideoId.value = result.videoId
         _lastFailedOnline.value = null
+        lastRecoveredVideoId = null   // allow 403-recovery for this fresh play
         onlineTransitionInProgress = true
 
         viewModelScope.launch {
@@ -668,13 +708,25 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 }
 
-private fun Track.toMediaItem(): MediaItem =
-    MediaItem.Builder()
+private fun Track.toMediaItem(): MediaItem {
+    // For streamed tracks, encode the resolving client's UA/headers into the URI
+    // fragment so PlaybackService's ResolvingDataSource can replay them on the HTTP
+    // request (googlevideo URLs 403 if fetched with a mismatched client identity).
+    val playUri: Uri = if (!streamUserAgent.isNullOrBlank() || streamHeaders.isNotEmpty()) {
+        val parts = buildList {
+            streamUserAgent?.let { add("bdua=" + Uri.encode(it)) }
+            streamHeaders.forEach { (k, v) -> add("bdh_$k=" + Uri.encode(v)) }
+        }
+        uri.buildUpon().fragment(parts.joinToString("&")).build()
+    } else uri
+
+    return MediaItem.Builder()
         .setMediaId(id)
-        .setUri(uri)
+        .setUri(playUri)
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setTitle(title).setArtist(artist).setAlbumTitle(album)
                 .setArtworkUri(artworkUri).build()
         )
         .build()
+}
