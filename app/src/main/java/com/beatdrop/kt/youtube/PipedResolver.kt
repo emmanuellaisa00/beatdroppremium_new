@@ -27,8 +27,8 @@ import java.util.concurrent.TimeUnit
 object PipedResolver {
 
     private val http = OkHttpClient.Builder()
-        .connectTimeout(6, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
         .followRedirects(true)
         .build()
 
@@ -53,13 +53,16 @@ object PipedResolver {
 
     /**
      * Resolve a videoId to a directly-playable URL via any Piped instance.
-     * Returns null only if every instance is dead. Each instance is given a 6s
-     * window; up to 5 are queried in parallel, first wins.
+     * Returns null only if every instance is dead. Each instance is given a 5s
+     * window; ALL instances are queried in parallel (not just 5), first wins.
+     * Using 5s instead of 6s keeps total latency under ~5s even when all instances
+     * are slow, and trying ALL at once means we don't miss a working instance
+     * that happens to be at the end of the list.
      */
     suspend fun resolve(videoId: String): ResolvedStream? = coroutineScope {
         val list = instances
-        // Probe up to 5 in parallel — first non-null wins via select-like await.
-        val deferreds = list.take(5).map { base ->
+        // Probe ALL instances in parallel — first non-null wins.
+        val deferreds = list.map { base ->
             async(Dispatchers.IO) { runCatching { tryInstance(base, videoId) }.getOrNull() }
         }
         // Return as soon as ANY succeeds.

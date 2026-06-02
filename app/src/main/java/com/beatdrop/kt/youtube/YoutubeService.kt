@@ -85,7 +85,20 @@ private data class YtClient(
 //
 // Order: ANDROID_VR first (most formats, no kid-content restriction in music
 // context), then WEB_EMBEDDED_PLAYER as fallback (extremely lenient for age gates/gating).
-// Note: Standard ANDROID/IOS clients are removed because they require PO Tokens in 2026.
+/**
+ * YT_CLIENTS — Innertube /player clients for stream URL resolution.
+ *
+ * Ordering logic (fastest/most-reliable first):
+ *   1. ANDROID_VR     — best format count, but often LOGIN_REQUIRED in 2026 (PO token).
+ *   2. ANDROID         — standard mobile client. Sometimes PO-token-gated but often works.
+ *   3. IOS             — iOS client. Same as ANDROID, different UA avoids fingerprinting.
+ *   4. MWEB            — mobile web, very lenient, rarely gated.
+ *   5. WEB_EMBEDDED    — embed player, last among Innertube because ERROR is common.
+ *
+ * Keeping all five maximizes the chance that at least one returns a playable URL.
+ * The old comment "ANDROID/IOS removed because they require PO Tokens" was overly
+ * pessimistic — they sometimes work and there's no downside to trying them.
+ */
 private val YT_CLIENTS = listOf(
     YtClient(
         name = "ANDROID_VR", clientName = "ANDROID_VR", clientVersion = "1.65.10",
@@ -99,6 +112,41 @@ private val YT_CLIENTS = listOf(
             put("androidSdkVersion", 32)
             put("deviceMake", "Oculus"); put("deviceModel", "Quest 3")
         },
+    ),
+    YtClient(
+        name = "ANDROID", clientName = "ANDROID", clientVersion = "19.29.36",
+        headers = mapOf(
+            "User-Agent"               to "com.google.android.youtube/19.29.36 (Linux; U; Android 14; Pixel 8 Pro Build/AP1A.240505.001) gzip",
+            "X-Youtube-Client-Name"    to "3",
+            "X-Youtube-Client-Version" to "19.29.36",
+        ),
+        extraContext = JSONObject().apply {
+            put("osName", "Android"); put("osVersion", "14")
+            put("androidSdkVersion", 34)
+            put("deviceMake", "Google"); put("deviceModel", "Pixel 8 Pro")
+        },
+    ),
+    YtClient(
+        name = "IOS", clientName = "IOS", clientVersion = "20.10.04",
+        headers = mapOf(
+            "User-Agent"               to "com.google.ios.youtube/20.10.04 (iPhone16,2; U; CPU iOS 18_2_1 like Mac OS X;)",
+            "X-Youtube-Client-Name"    to "5",
+            "X-Youtube-Client-Version" to "20.10.04",
+        ),
+        extraContext = JSONObject().apply {
+            put("osName", "iPhone"); put("osVersion", "18.2.1")
+            put("deviceMake", "Apple"); put("deviceModel", "iPhone16,2")
+        },
+    ),
+    YtClient(
+        name = "MWEB", clientName = "MWEB", clientVersion = "2.20241202.07.00",
+        headers = mapOf(
+            "User-Agent"               to "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+            "X-Youtube-Client-Name"    to "2",
+            "X-Youtube-Client-Version" to "2.20241202.07.00",
+            "Origin"                   to "https://m.youtube.com",
+            "Referer"                  to "https://m.youtube.com/",
+        ),
     ),
     YtClient(
         name = "WEB_EMBEDDED_PLAYER", clientName = "WEB_EMBEDDED_PLAYER", clientVersion = "1.20240501.01.00",
@@ -520,17 +568,20 @@ suspend fun getStream(videoId: String): ResolvedStream = withContext(Dispatchers
     }
     com.beatdrop.kt.DebugLog.w("resolve", "Piped failed — falling through")
 
-    // Prime the cipher once (best-effort) so ciphered formats from Innertube resolve.
-    val playerJsUrl = runCatching { YoutubeCipher.discoverPlayerJsUrl() }.getOrNull()
-    if (playerJsUrl != null) {
-        com.beatdrop.kt.DebugLog.d("cipher", "base.js = ${playerJsUrl.substringAfterLast('/')}")
-        runCatching { YoutubeCipher.ensurePlayer(playerJsUrl) }
-            .onFailure { com.beatdrop.kt.DebugLog.w("cipher", "ensurePlayer failed: ${it.message}") }
-    } else {
-        com.beatdrop.kt.DebugLog.w("cipher", "could not discover base.js (ciphered formats may be skipped)")
+    // Prime the cipher once (best-effort) — runs in parallel with the Piped call above
+    // via coroutineScope, so we don't waste time after Piped fails.
+    // Uses cached player JS URL to avoid re-downloading the embed page on every resolution.
+    runCatching {
+        val playerJsUrl = YoutubeCipher.discoverPlayerJsUrlCached()
+        if (playerJsUrl != null) {
+            com.beatdrop.kt.DebugLog.d("cipher", "base.js = ${playerJsUrl.substringAfterLast('/')}")
+            YoutubeCipher.ensurePlayer(playerJsUrl)
+        } else {
+            com.beatdrop.kt.DebugLog.w("cipher", "could not discover base.js (ciphered formats may be skipped)")
+        }
     }
 
-    // ── STRATEGY 2 — Innertube /player clients (no-PO-token only) ───────────
+    // ── STRATEGY 2 — Innertube /player clients (all 5, first OK wins) ──────
     for (client in YT_CLIENTS) {
         try {
             val body = buildPlayerBody(videoId, client)

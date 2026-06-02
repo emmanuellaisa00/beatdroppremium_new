@@ -37,7 +37,7 @@ class Prefs(private val context: Context) {
         val MAX_CONCURRENT_DOWNLOADS = intPreferencesKey("max_concurrent_downloads")
         val DOWNLOAD_DIR_PATH = stringPreferencesKey("download_dir_path")
         val PRIVATE_PIN = stringPreferencesKey("private_pin")  // hashed PIN
-        val SEARCH_PLATFORM = stringPreferencesKey("search_platform") // "YouTube", "SoundCloud", "All"
+        val SEARCH_PLATFORM = stringPreferencesKey("search_platform") // "YouTube"
     }
 
     // ── liked ──

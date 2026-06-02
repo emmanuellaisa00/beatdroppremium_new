@@ -12,7 +12,7 @@ data class OnlineResult(
     val durationText: String,
     val durationSecs: Int = 0,
     val isLive: Boolean = false,
-    val sourcePlatform: String = "YouTube",   // "YouTube", "SoundCloud", etc.
+    val sourcePlatform: String = "YouTube",
     val sourceUrl: String? = null,             // Original platform URL
 )
 
@@ -53,10 +53,9 @@ class InnertubeSearchProvider : SearchProvider {
 /** Injection point. Set in BeatDropApp.onCreate(). */
 object OnlineSearch {
     @Volatile var provider: SearchProvider = NotConfiguredProvider
-    @Volatile var secondaryProvider: SearchProvider? = null  // Multi-platform (SoundCloud, etc.)
     /** When true, search uses YouTube Music (curated songs only). */
     @Volatile var musicMode: Boolean = true
-    /** Active search platform: "YouTube", "SoundCloud", "All" */
+    /** Active search platform: "YouTube" */
     @Volatile var searchPlatform: String = "YouTube"
     val isConfigured: Boolean get() = provider !== NotConfiguredProvider
 }

@@ -339,6 +339,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                     Player.STATE_IDLE -> "IDLE"; Player.STATE_BUFFERING -> "BUFFERING"
                     Player.STATE_READY -> "READY"; Player.STATE_ENDED -> "ENDED"; else -> "$playbackState"
                 }
+                // Skip ENDED log for temp online tracks (Uri.EMPTY) -- those immediately
+                // transition to ENDED because the placeholder has no media source.
+                if (name == "ENDED" && _current.value?.uri == Uri.EMPTY) return
                 DebugLog.d("player", "state=$name")
                 _duration.value = controller?.duration?.coerceAtLeast(0L) ?: 0L
                 _volume.value = controller?.volume ?: 1f
@@ -1004,7 +1007,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── URL-based play/download (from clipboard, share menu, deep links) ───────
     /**
-     * Play a video from a URL (YouTube, SoundCloud, etc.).
+     * Play a video from a URL (YouTube etc.).
      * Extracts the video ID and delegates to playOnline.
      */
     fun playOnlineByUrl(url: String) {

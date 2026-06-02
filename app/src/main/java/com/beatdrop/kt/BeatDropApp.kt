@@ -10,7 +10,6 @@ import com.beatdrop.kt.data.Subscriptions
 import com.beatdrop.kt.youtube.InnertubeSearchProvider
 import com.beatdrop.kt.youtube.OnlineSearch
 import com.beatdrop.kt.youtube.PipedResolver
-import com.beatdrop.kt.youtube.SoundCloudProvider
 import com.beatdrop.kt.youtube.YoutubeService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,9 +30,6 @@ class BeatDropApp : Application(), ImageLoaderFactory {
 
         // Wire online search to the real Innertube backend (no API key required)
         OnlineSearch.provider = InnertubeSearchProvider()
-        // Wire SoundCloud as secondary search provider (multi-platform)
-        OnlineSearch.secondaryProvider = SoundCloudProvider()
-
         // Give YoutubeService a context for the download directory
         YoutubeService.init(this)
 
@@ -50,14 +46,7 @@ class BeatDropApp : Application(), ImageLoaderFactory {
                 .onFailure { DebugLog.w("piped", "instance list refresh failed: ${it.message}") }
         }
 
-        // Discover SoundCloud client_id in background
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            runCatching { SoundCloudProvider.discoverClientId() }
-                .onSuccess { DebugLog.i("soundcloud", "client_id discovered") }
-                .onFailure { DebugLog.w("soundcloud", "client_id discovery failed: ${it.message}") }
-        }
-
-        DebugLog.i("app", "BeatDrop started — online search + SoundCloud wired, YoutubeService ready")
+        DebugLog.i("app", "BeatDrop started — online search wired, YoutubeService ready")
     }
 
     override fun newImageLoader(): ImageLoader =

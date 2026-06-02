@@ -29,7 +29,7 @@ object DownloadHistory {
         val downloadedAt: Long,
         val status: String,         // "completed", "failed", "deleted", "cancelled"
         val error: String? = null,
-        val sourcePlatform: String = "YouTube", // "YouTube", "SoundCloud", etc.
+        val sourcePlatform: String = "YouTube",
         val isVideo: Boolean = false,
     )
 

@@ -17,8 +17,6 @@ object ClipboardWatcher {
         Regex("""(?:https?://)?youtu\.be/([a-zA-Z0-9_-]{11})"""),
         Regex("""(?:https?://)?music\.youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})"""),
         Regex("""(?:https?://)?(?:www\.|m\.)?youtube\.com/playlist\?list=([a-zA-Z0-9_-]+)"""),
-        // SoundCloud
-        Regex("""(?:https?://)?soundcloud\.com/([\w-]+/[\w-]+)"""),
         // TikTok
         Regex("""(?:https?://)?(?:www\.|vm\.)?tiktok\.com/[@\w/.]+"""),
         // Instagram
@@ -65,7 +63,6 @@ object ClipboardWatcher {
             val url = match.value
             val platform = when {
                 url.contains("youtube.com") || url.contains("youtu.be") || url.contains("music.youtube.com") -> "YouTube"
-                url.contains("soundcloud.com") -> "SoundCloud"
                 url.contains("tiktok.com") -> "TikTok"
                 url.contains("instagram.com") -> "Instagram"
                 url.contains("facebook.com") || url.contains("fb.watch") -> "Facebook"

@@ -86,7 +86,7 @@ fun BrowserScreen(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             // Quick access buttons for popular platforms
-            listOf("YouTube" to "https://m.youtube.com", "SoundCloud" to "https://m.soundcloud.com").forEach { (label, siteUrl) ->
+            listOf("YouTube" to "https://m.youtube.com").forEach { (label, siteUrl) ->
                 OutlinedButton(
                     onClick = { url = siteUrl; inputUrl = siteUrl },
                     shape = RoundedCornerShape(16.dp),
@@ -140,8 +140,7 @@ fun BrowserScreen(
                             override fun shouldInterceptRequest(v: WebView, req: WebResourceRequest): WebResourceResponse? {
                                 val u = req.url.toString()
                                 // Detect media streams
-                                if (u.contains("googlevideo.com/videoplayback") ||
-                                    u.contains("soundcloud.com") && u.contains(".mp3")) {
+                                if (u.contains("googlevideo.com/videoplayback")) {
                                     detectedDownloadUrl = u
                                 }
                                 return null

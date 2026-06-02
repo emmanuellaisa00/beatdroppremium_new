@@ -47,9 +47,9 @@
 **Impact:** Users who want music videos, concerts, or any visual content have no path.
 
 ### 2. Multi-Platform Downloads (BeatDrop is YouTube-only)
-**SnapTube:** 50–100+ platforms: YouTube, Facebook, Instagram, TikTok, Twitter/X, Vimeo, Dailymotion, SoundCloud, Vevo, WhatsApp, OK.ru, and more.
+**SnapTube:** 50–100+ platforms: YouTube, Facebook, Instagram, TikTok, Twitter/X, Vimeo, Dailymotion, Vevo, WhatsApp, OK.ru, and more.
 **BeatDrop:** Only YouTube via Innertube (`searchYoutube` / `searchYoutubeMusic`), Piped, Invidious, and WebView extractor. `SearchProvider` is a single interface but only `InnertubeSearchProvider` exists.
-**Impact:** No access to the ~60% of viral/content music that lives on TikTok, Instagram Reels, or SoundCloud.
+**Impact:** No access to the ~60% of viral/content music that lives on TikTok, Instagram Reels.
 
 ### 3. Format Selection Before Download
 **SnapTube:** Shows a dialog before every download with:
@@ -227,4 +227,3 @@
 12. **SD card storage** — Option to save downloads to external storage.
 13. **Localization** — Extract strings, add translations for top languages.
 14. **Storage management** — Dashboard showing download sizes and cleanup options.
-15. **Multi-platform** — Add SoundCloud, at minimum, as a `SearchProvider`.
