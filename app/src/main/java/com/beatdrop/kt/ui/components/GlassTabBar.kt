@@ -97,23 +97,6 @@ fun GlassTabBar2(
         Box(
             Modifier
                 .fillMaxWidth()
-                // Backdrop blur + saturation
-                .then(
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                        Modifier.graphicsLayer {
-                            renderEffect = RenderEffect.createChainEffect(
-                                RenderEffect.createColorFilterEffect(
-                                    android.graphics.ColorMatrixColorFilter(
-                                        android.graphics.ColorMatrix().apply { setSaturation(1.6f) }
-                                    )
-                                ),
-                                RenderEffect.createBlurEffect(50f, 50f, Shader.TileMode.CLAMP),
-                            ).asComposeRenderEffect()
-                            clip = true
-                            shape = outerShape
-                        }
-                    else Modifier
-                )
                 // Glass fill
                 .background(
                     if (C.isDark) Color(0xCC0E0C1A) else Color(0xD9F4F4F8),

@@ -387,24 +387,8 @@ fun StatusBarGlassOverlay() {
         Modifier
             .fillMaxWidth()
             .height(topPadding)
-            .then(
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    Modifier.graphicsLayer {
-                        renderEffect = android.graphics.RenderEffect.createChainEffect(
-                            android.graphics.RenderEffect.createColorFilterEffect(
-                                android.graphics.ColorMatrixColorFilter(
-                                    android.graphics.ColorMatrix().apply { setSaturation(1.5f) }
-                                )
-                            ),
-                            android.graphics.RenderEffect
-                                .createBlurEffect(45f, 45f, android.graphics.Shader.TileMode.CLAMP),
-                        ).asComposeRenderEffect()
-                        clip = true
-                    }
-                } else Modifier
-            )
             .background(
-                if (C.isDark) Color(0x200A0910) else Color(0x22EEEEEE)
+                if (C.isDark) Color(0x330A0910) else Color(0x33EEEEEE)
             )
             .drawWithContent {
                 drawContent()

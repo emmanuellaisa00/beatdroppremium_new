@@ -76,40 +76,22 @@ fun MiniPlayer(
     val innerRadius = Radius.inner(outerRadius, 8.dp)  // Concentric: 24 - 8 = 16dp
     val outerShape = RoundedCornerShape(outerRadius)
 
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-            .graphicsLayer {
-                translationX = animX
-                translationY = animY
-                // Context-aware drop shadow
-                shadowElevation = if (C.isDark) 12f else 6f
-                shape = outerShape
-                clip = false
-            }
-            .clip(outerShape)
-            // Backdrop blur + saturation boost (API 31+)
-            .then(
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                    Modifier.graphicsLayer {
-                        renderEffect = RenderEffect.createChainEffect(
-                            RenderEffect.createColorFilterEffect(
-                                android.graphics.ColorMatrixColorFilter(
-                                    android.graphics.ColorMatrix().apply { setSaturation(1.7f) }
-                                )
-                            ),
-                            RenderEffect.createBlurEffect(45f, 45f, Shader.TileMode.CLAMP),
-                        ).asComposeRenderEffect()
-                        clip = true
-                    }
-                else Modifier
-                    // Pre-API-31 fallback: heavier opaque fill
-                    .background(if (C.isDark) Color(0xF0101018) else Color(0xF0F2F2F7))
-            )
-            // Glass fill
-            .background(if (C.isDark) Color(0xC00E0C18) else Color(0xC8F4F4FA))
-            // Rim light (Fresnel top-edge for thickness)
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+                .graphicsLayer {
+                    translationX = animX
+                    translationY = animY
+                    // Context-aware drop shadow
+                    shadowElevation = if (C.isDark) 12f else 6f
+                    shape = outerShape
+                    clip = false
+                }
+                .clip(outerShape)
+                // Glass fill
+                .background(if (C.isDark) Color(0xF0101018) else Color(0xF0F2F2F7))
+                // Rim light (Fresnel top-edge for thickness)
             .drawWithContent {
                 drawContent()
                 drawRect(
