@@ -695,12 +695,15 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 deck.volume = 0f
                 mainPlayer.repeatMode = savedRepeatMode
                 val nextIdx = mainPlayer.currentMediaItemIndex + 1
-                // Explicitly jump to the next item so ExoPlayer drops the previous item's decoder state
-                mainPlayer.seekToDefaultPosition(nextIdx)
+                
+                // We MUST NOT do two seeks back-to-back (like seekToDefaultPosition then seekTo) 
+                // because the first seek clears ExoPlayer's pre-warmed buffer and the second seek 
+                // forces a cold I/O fetch, which causes the 1-second gap!
+                // Instead, we just seek directly to the exact millisecond Deck B is at.
                 if (nextIdx >= mainPlayer.mediaItemCount || mainPlayer.getMediaItemAt(nextIdx).mediaId != next.id) {
                     mainPlayer.addMediaItem(nextIdx, next.toMediaItem())
                 }
-                // Then seek to the exact handoff position
+                
                 mainPlayer.seekTo(nextIdx, handoffPos)
                 mainPlayer.prepare()
                 mainPlayer.play()
