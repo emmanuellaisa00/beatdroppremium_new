@@ -77,14 +77,6 @@ fun DiscoverScreen(vm: PlayerViewModel, onOpenSearch: () -> Unit = {}, onExpandP
         }
     }
 
-    if (loading) {
-        DiscoverShimmer()
-        return
-    }
-
-    val featured = trending.firstOrNull()
-    val quickGrid = trending.drop(1).take(6)
-
     val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -106,6 +98,14 @@ fun DiscoverScreen(vm: PlayerViewModel, onOpenSearch: () -> Unit = {}, onExpandP
                 }
             }
         }
+
+        if (loading) {
+            item { DiscoverShimmerContent() }
+            return@LazyColumn
+        }
+
+        val featured = trending.firstOrNull()
+        val quickGrid = trending.drop(1).take(6)
 
         // ── Featured Hero card (Direct Stream Playback) ─────────────────────
         featured?.let { feat ->
@@ -388,7 +388,7 @@ private fun LocalCarousel(title: String, list: List<Track>, vm: PlayerViewModel)
 }
 
 @Composable
-fun DiscoverShimmer() {
+fun DiscoverShimmerContent() {
     val C = LocalAppColors.current
     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
     val xOffset by infiniteTransition.animateFloat(
@@ -413,19 +413,9 @@ fun DiscoverShimmer() {
 
     Column(
         Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
+            .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // Title Shimmer
-        Box(
-            Modifier
-                .size(140.dp, 32.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(shimmerBrush)
-        )
-        Spacer(Modifier.height(24.dp))
-
         // Hero Card Shimmer
         Box(
             Modifier

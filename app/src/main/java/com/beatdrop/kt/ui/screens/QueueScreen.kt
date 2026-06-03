@@ -50,7 +50,7 @@ fun QueueScreen(vm: PlayerViewModel, onClose: () -> Unit) {
     var draggingIndex by remember { mutableStateOf(-1) }
     var dragOffset by remember { mutableStateOf(0f) }
 
-    Column(Modifier.fillMaxSize().background(C.bg0).statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(Color.Transparent).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) { Icon(Icons.Filled.KeyboardArrowDown, "Close", tint = C.text) }
             Text("Up Next", color = C.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)

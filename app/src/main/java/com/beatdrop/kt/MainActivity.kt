@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.beatdrop.kt.ui.components.GlassTabBar2
 import com.beatdrop.kt.ui.components.TabSpec2
@@ -238,12 +239,42 @@ fun MainScaffold(vm: PlayerViewModel) {
         listOf(artColor.copy(alpha = 0.15f), Color(0xFFF9F7FC), Color(0xFFF0EDF5))
     }
 
+    val tilt = com.beatdrop.kt.ui.components.rememberDeviceTilt()
+
     Surface(Modifier.fillMaxSize(), color = Color.Transparent) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(androidx.compose.ui.graphics.Brush.linearGradient(bgColors))
-        ) {
+        Box(Modifier.fillMaxSize()) {
+            // Global blurred artwork background
+            if (current != null) {
+                AsyncImage(
+                    model = coil.request.ImageRequest.Builder(LocalContext.current)
+                        .data(current?.artworkUri)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                renderEffect = android.graphics.RenderEffect
+                                    .createBlurEffect(150f, 150f, android.graphics.Shader.TileMode.CLAMP)
+                                    .asComposeRenderEffect()
+                            }
+                            alpha = if (C.isDark) 0.5f else 0.35f
+                        }
+                )
+            } else {
+                Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.linearGradient(bgColors)))
+            }
+
+            // Global translucent glass tint & specular reflection
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(if (C.isDark) Color(0xD90A0910) else Color(0xD9FFFFFF))
+                    .com.beatdrop.kt.ui.components.specularHighlight(tilt, intensity = if (C.isDark) 0.05f else 0.03f, radius = 1000f)
+            )
+
             AnimatedContent(
                 targetState = currentDest,
                 transitionSpec = {
@@ -352,7 +383,7 @@ private fun TabsHost(
             }
         }
         Column(Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) {
-            Box(Modifier.fillMaxWidth().background(if (C.isDark) Color(0xFF101018) else Color(0xFFF2F2F7))) {
+            Box(Modifier.fillMaxWidth().background(Color.Transparent)) {
                 current?.let { t ->
                     MiniPlayer(
                         track = t, isPlaying = isPlaying,
