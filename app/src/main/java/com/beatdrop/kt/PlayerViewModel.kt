@@ -695,12 +695,13 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 deck.volume = 0f
                 mainPlayer.repeatMode = savedRepeatMode
                 val nextIdx = mainPlayer.currentMediaItemIndex + 1
-                if (nextIdx < mainPlayer.mediaItemCount && mainPlayer.getMediaItemAt(nextIdx).mediaId == next.id) {
-                    mainPlayer.seekTo(nextIdx, handoffPos)
-                } else {
+                // Explicitly jump to the next item so ExoPlayer drops the previous item's decoder state
+                mainPlayer.seekToDefaultPosition(nextIdx)
+                if (nextIdx >= mainPlayer.mediaItemCount || mainPlayer.getMediaItemAt(nextIdx).mediaId != next.id) {
                     mainPlayer.addMediaItem(nextIdx, next.toMediaItem())
-                    mainPlayer.seekTo(nextIdx, handoffPos)
                 }
+                // Then seek to the exact handoff position
+                mainPlayer.seekTo(nextIdx, handoffPos)
                 mainPlayer.prepare()
                 mainPlayer.play()
                 // Keep the B deck gain for the new track

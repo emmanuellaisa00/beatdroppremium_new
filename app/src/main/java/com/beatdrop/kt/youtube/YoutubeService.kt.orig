@@ -710,7 +710,7 @@ suspend fun getStream(videoId: String): ResolvedStream = withContext(Dispatchers
                 if (!cookies.isNullOrBlank()) {
                     hdrs["Cookie"] = cookies
                 }
-                val s = ResolvedStream(url, CHROME_UA, hdrs)
+                val s = ResolvedStream(url, SVC_CHROME_UA, hdrs)
                 setCachedStream(videoId, s); return@withContext s
             } else {
                 com.beatdrop.kt.DebugLog.w("resolve", "WebView returned no URL (timed out or no CDN request)")

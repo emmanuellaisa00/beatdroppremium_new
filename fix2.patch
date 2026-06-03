@@ -1,0 +1,11 @@
+--- app/src/main/java/com/beatdrop/kt/youtube/YoutubeService.kt
++++ app/src/main/java/com/beatdrop/kt/youtube/YoutubeService.kt
+@@ -673,7 +673,8 @@
+                     okHttp.newCall(headReq).execute().use { resp ->
+                         val cType = resp.header("Content-Type") ?: ""
+-                        resp.isSuccessful && !cType.contains("text/html")
++                        // 403 Forbidden is a hard block. 200 OK with text/html is a soft block (captcha/consent redirect).
++                        resp.isSuccessful && !cType.contains("text/html") && resp.code != 403
+                     }
+                 }.getOrDefault(false)
+ 
