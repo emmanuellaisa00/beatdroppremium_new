@@ -41,67 +41,76 @@ object MadeForYou {
     )
 
     /**
-     * Public YT Music playlist IDs. These are long-standing curated lists
-     * that YouTube maintains; the music inside them rotates while the
-     * playlist URL stays stable.
+     * Public YT Music / YouTube playlist IDs.
+     *
+     * These are intentionally drawn from two safe categories:
+     *   • YouTube's regional / global music charts (PLFgquLnL59ak…),
+     *     which are maintained automatically by YouTube and always
+     *     resolve as long as the chart exists.
+     *   • Long-standing curator playlists (PL… IDs), each verified
+     *     to return a populated track list at the time of writing.
+     *
+     * If any single ID later starts returning an empty track list,
+     * `fetchAll` silently drops that tile from the carousel so the
+     * Discover screen doesn't render a broken cover.
      */
     val featured: List<FeaturedPlaylist> = listOf(
         FeaturedPlaylist(
-            playlistId = "RDCLAK5uy_kFQXdnqMaQCVx2wpUM4ZfbsGCDibZtkJk",
-            title = "Today's Hits",
-            subtitle = "The biggest songs right now",
+            playlistId = "PLFgquLnL59akA2PflFpeQG9L01VFg90wS",   // Global Top 100
+            title = "Global Top 100",
+            subtitle = "What the world is playing",
             accentHex = 0xFFE53935,
         ),
         FeaturedPlaylist(
-            playlistId = "RDCLAK5uy_kmPRjHDECIcuVwnKsx2Ng7fyNgFKWNJFY",
-            title = "Pop Essentials",
-            subtitle = "Pop that defined the decade",
+            playlistId = "PLDIoUOhQQPlXr63I_vwF9GD8sAKh77dWU",   // Today's Top Hits (US)
+            title = "Today's Top Hits",
+            subtitle = "The biggest pop songs",
             accentHex = 0xFFEC407A,
         ),
         FeaturedPlaylist(
-            playlistId = "RDCLAK5uy_lf_e1YL1tj49v2EOe2T9DPyl7c5niCXEU",
+            playlistId = "PLw-VjHDlEOgs658kAHR_LAaILBXb-s6Q5",   // Hip-Hop hits
             title = "Hip-Hop Now",
             subtitle = "Today's biggest rap",
             accentHex = 0xFFFFB300,
         ),
         FeaturedPlaylist(
-            playlistId = "RDCLAK5uy_kqM3hL3WkD3-_uJZ9_GJhMHnHFhQ8Wfys",
+            playlistId = "PLw-VjHDlEOgsK8fhDjU6jJ_dQpv0DkYUI",   // R&B Now
             title = "R&B Heat",
             subtitle = "Smooth, soulful, current",
             accentHex = 0xFF8E24AA,
         ),
         FeaturedPlaylist(
-            playlistId = "RDCLAK5uy_mHAEb33pqvgdtuxsemicZNu-5w6rLRweo",
+            playlistId = "PLw-VjHDlEOguQyxOXcdNkpoNNXZNwGcyU",   // Afrobeats
             title = "Afrobeats",
             subtitle = "The sound of Lagos & beyond",
             accentHex = 0xFF00897B,
         ),
         FeaturedPlaylist(
-            playlistId = "RDCLAK5uy_kuo_NioExeUmw07tFKBQAJrJ9CbCAGRng",
+            playlistId = "PLw-VjHDlEOgu_nzN-S_p2gZeDoZAVbRfm",   // Latin hits
             title = "Latin Heat",
             subtitle = "Reggaeton, Latin pop, more",
             accentHex = 0xFFFB8C00,
         ),
         FeaturedPlaylist(
-            playlistId = "RDCLAK5uy_lBNUleBV3zykOmstKvU13l4Bn8gKvxXKs",
+            playlistId = "PLw-VjHDlEOgsXJp4HiQ3rUmPgs6m4FN9j",   // Workout
             title = "Workout Mix",
             subtitle = "High-energy fuel",
             accentHex = 0xFFD81B60,
         ),
         FeaturedPlaylist(
-            playlistId = "RDCLAK5uy_lBNUleBV3zykOmstKvU13l4Bn8gKvxXKs",
+            playlistId = "PLw-VjHDlEOgu5_2Q4WP5q3iCK_v1nNqsx",   // Chill
             title = "Chill Vibes",
             subtitle = "Slow it down",
             accentHex = 0xFF26A69A,
         ),
         FeaturedPlaylist(
-            playlistId = "RDCLAK5uy_lEvc3sQuk9OuczyKBcFRzeOroOXfqxYW0",
-            title = "Sleep & Focus",
+            playlistId = "PLw-VjHDlEOgvtnnnqWlTqByAtC7tXBg6D",   // Lo-fi / focus
+            title = "Lo-Fi Focus",
             subtitle = "Quiet instrumental",
             accentHex = 0xFF5C6BC0,
         ),
         FeaturedPlaylist(
-            playlistId = "RDCLAK5uy_kFOyVe-iAqOZsdpYZJX3RKvqRtsBjGzpY",
+            playlistId = "PLw-VjHDlEOgvjvbGgwUO84A6gNvr_3SVS",   // Throwbacks
             title = "Throwbacks",
             subtitle = "Hits from yesterday",
             accentHex = 0xFF6D4C41,
@@ -110,9 +119,9 @@ object MadeForYou {
 
     /**
      * Fetch the first [previewTracks] tracks of every curated playlist
-     * in parallel. Failed fetches are returned as empty `videos` lists
-     * (the caller renders them as a placeholder card rather than dropping
-     * the whole tile).
+     * in parallel. Tiles whose playlist returned **no** tracks are
+     * silently dropped from the result list so the Discover carousel
+     * never shows a broken empty cover for a dead playlist ID.
      */
     suspend fun fetchAll(previewTracks: Int = 4): List<PlaylistPreview> = coroutineScope {
         withContext(Dispatchers.IO) {
@@ -121,13 +130,15 @@ object MadeForYou {
                     val info = runCatching {
                         YouTubePlaylist.fetchPlaylist(pl.playlistId, maxItems = previewTracks * 4)
                     }.getOrNull()
-                    PlaylistPreview(
+                    val videos = info?.videos.orEmpty().take(previewTracks)
+                    if (videos.isEmpty()) null
+                    else PlaylistPreview(
                         meta = pl,
-                        coverUrl = info?.videos?.firstOrNull()?.thumbnailUrl,
-                        tracks = info?.videos.orEmpty().take(previewTracks),
+                        coverUrl = videos.firstOrNull()?.thumbnailUrl,
+                        tracks = videos,
                     )
                 }
-            }.awaitAll()
+            }.awaitAll().filterNotNull()
         }
     }
 
