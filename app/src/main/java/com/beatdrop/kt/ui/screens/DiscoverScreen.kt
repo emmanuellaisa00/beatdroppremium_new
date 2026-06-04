@@ -36,8 +36,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.beatdrop.kt.ui.components.Ic
-import com.beatdrop.kt.ui.components.ambientGlow
-import com.beatdrop.kt.ui.components.noiseOverlay
+import com.beatdrop.kt.ui.components.ScreenScaffold
 import com.beatdrop.kt.PlayerViewModel
 import com.beatdrop.kt.data.Track
 import com.beatdrop.kt.ui.components.SectionHeader
