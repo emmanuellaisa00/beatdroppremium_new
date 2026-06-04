@@ -537,6 +537,24 @@ suspend fun getSearchSuggestions(query: String): List<String> =
 suspend fun getStreamUrl(videoId: String): String = getStream(videoId).url
 
 /**
+ * Recovery key — when set, the next [getStream] call for this videoId
+ * skips Strategy 2 (Innertube clients) and goes straight to Strategy 3
+ * (WebView extractor). Set by [PlayerViewModel] after ExoPlayer reports
+ * an HTTP 4xx / bad-content-type on a googlevideo URL.
+ *
+ * One-shot: cleared inside [getStream] after consumption so a *third*
+ * failure on the same track surfaces as an honest error instead of
+ * looping.
+ */
+private val skipInnertubeOnce = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+/** Mark [videoId] for WebView-first re-resolution on the next call. */
+fun markForWebViewRetry(videoId: String) {
+    skipInnertubeOnce.add(videoId)
+    invalidateStreamCache(videoId)
+}
+
+/**
  * Resolve a directly-playable audio stream + the headers it must be fetched with.
  *
  * Now handles ciphered formats: when a /player response returns `signatureCipher`
@@ -545,7 +563,16 @@ suspend fun getStreamUrl(videoId: String): String = getStream(videoId).url
  * yt-dlp / NewPipe use. This is the piece that makes playback reliable like SnapTube.
  */
 suspend fun getStream(videoId: String): ResolvedStream = withContext(Dispatchers.IO) {
-    com.beatdrop.kt.DebugLog.i("resolve", "getStream($videoId) start")
+    // One-shot recovery flag: if PlayerViewModel just rescued from a 2xxx
+    // CDN error, skip the Innertube chain (which produced the bad URL) and
+    // go WebView-first. Consumed (cleared) on entry — a second failure on
+    // the same track will surface as a real error instead of looping.
+    val webViewFirst = skipInnertubeOnce.remove(videoId)
+    if (webViewFirst) {
+        com.beatdrop.kt.DebugLog.i("resolve", "getStream($videoId) start — WebView-first (post-recovery)")
+    } else {
+        com.beatdrop.kt.DebugLog.i("resolve", "getStream($videoId) start")
+    }
     getCachedStream(videoId)?.let {
         com.beatdrop.kt.DebugLog.i("resolve", "cache hit → ${com.beatdrop.kt.DebugLog.shortUrl(it.url)}")
         return@withContext it
@@ -593,7 +620,10 @@ suspend fun getStream(videoId: String): ResolvedStream = withContext(Dispatchers
     }
 
     // ── STRATEGY 2 — Innertube /player clients (all 5, first OK wins) ──────
-    for (client in YT_CLIENTS) {
+    // Skipped when [webViewFirst] is set — the previous attempt's URL came
+    // from here and was rejected by googlevideo (HTTP 4xx / 2004). Walking
+    // this chain again would just hand back a structurally identical bad URL.
+    if (!webViewFirst) for (client in YT_CLIENTS) {
         try {
             val body = buildPlayerBody(videoId, client)
             val req = Request.Builder()
@@ -650,7 +680,9 @@ suspend fun getStream(videoId: String): ResolvedStream = withContext(Dispatchers
                 // for valid GET streams (signature is path+query bound, not method bound).
                 // False negatives were killing good IOS and ANDROID_TESTSUITE URLs.
                 // ExoPlayer is the correct arbiter: it fires ERROR_CODE_IO_BAD_HTTP_STATUS
-                // on a truly blocked URL, which triggers re-resolve via invalidateStreamCache.
+                // on a truly blocked URL → PlayerViewModel.onPlayerError calls
+                // markForWebViewRetry(videoId), and the next getStream() skips this
+                // whole Innertube chain in favour of the WebView extractor.
                 com.beatdrop.kt.DebugLog.i("resolve", "✅ ${client.name} resolved ($pickedKind) → ${com.beatdrop.kt.DebugLog.shortUrl(url)}")
                 val s = ResolvedStream(url, ua, extra)
                 setCachedStream(videoId, s); return@withContext s

@@ -406,7 +406,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                     lastRecoveredVideoId = cur.sourceVideoId
                     val resumeAt = controller?.currentPosition ?: 0L
                     viewModelScope.launch {
-                        invalidateStreamCache(cur.sourceVideoId!!)
+                        // Was: invalidateStreamCache() — walked the same Innertube
+                        // chain and produced the same bad URL → 2004 loop.
+                        // Now: markForWebViewRetry() tells getStream() to SKIP
+                        // Strategy 2 (Innertube) and go straight to Strategy 3
+                        // (WebView extractor) which uses real Chrome cookies +
+                        // visitorData and is not subject to PO-token enforcement.
+                        DebugLog.i("player", "recovery → WebView re-resolve for ${cur.sourceVideoId}")
+                        markForWebViewRetry(cur.sourceVideoId!!)
                         val fresh = runCatching {
                             youtubeResultToTrack(
                                 OnlineResult(
