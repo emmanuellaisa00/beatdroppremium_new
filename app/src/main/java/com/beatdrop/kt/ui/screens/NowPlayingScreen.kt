@@ -521,25 +521,21 @@ fun NowPlayingScreen(
                 // Download — shows tick if already saved locally
                 val videoId = track?.sourceVideoId
                 val isDownloaded = videoId != null && vm.isOnlineDownloaded(videoId)
-                IconButton(onClick = {
-                    if (videoId != null && !isDownloaded) {
-                        val result = com.beatdrop.kt.youtube.OnlineResult(
-                            videoId = videoId,
-                            title = track?.title ?: "",
-                            author = track?.artist ?: "",
-                            thumbnailUrl = track?.artworkOverride,
-                            durationText = "",
-                            durationSecs = ((track?.durationMs ?: 0L) / 1000L).toInt(),
+                val dlJob = videoId?.let { vm.downloadJobFor(it) }
+                val isDownloading = dlJob?.status == com.beatdrop.kt.youtube.DownloadStatus.DOWNLOADING
+                if (videoId != null) {
+                    IconButton(onClick = {
+                        if (!isDownloaded && !isDownloading) {
+                            vm.downloadOnlineWithMetadata(videoId)
+                        }
+                    }) {
+                        Icon(
+                            if (isDownloaded) Ic.Check else Ic.Download,
+                            if (isDownloaded) "Downloaded" else if (isDownloading) "Downloading…" else "Download",
+                            tint = if (isDownloaded) C.accent else Color.White,
+                            modifier = Modifier.size(24.dp),
                         )
-                        vm.downloadOnline(result)
                     }
-                }) {
-                    Icon(
-                        if (isDownloaded) Ic.Check else Ic.Download,
-                        if (isDownloaded) "Downloaded" else "Download",
-                        tint = if (isDownloaded) C.accent else Color.White,
-                        modifier = Modifier.size(24.dp),
-                    )
                 }
                 Box(Modifier.height(22.dp).width(0.8.dp).background(Color.White.copy(alpha = 0.22f)))
                 // AirPlay

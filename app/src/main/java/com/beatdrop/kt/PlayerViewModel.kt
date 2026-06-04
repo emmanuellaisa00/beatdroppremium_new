@@ -25,6 +25,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.minOf
 
 class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -162,6 +163,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Auto-DJ runtime state ────────────────────────────────────────────────
     @Volatile private var isCrossfading = false
+    private var autoMixSequence = 0L  // monotonic — guards against stale finally blocks
     @Volatile private var crossfadeJob: kotlinx.coroutines.Job? = null
     // Repeat mode to restore after the fade (we force REPEAT_MODE_ONE during it).
     @Volatile private var savedRepeatMode: Int = Player.REPEAT_MODE_OFF
@@ -183,7 +185,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         if (onlineRecentlyPlayedIds.lastOrNull() == videoId) return
         onlineRecentlyPlayedIds.addLast(videoId)
         while (onlineRecentlyPlayedIds.size > 6) onlineRecentlyPlayedIds.removeFirst()
-        viewModelScope.launch { prefs.setOnlineRecentlyPlayed(onlineRecentlyPlayedIds.toSet()) }
+        viewModelScope.launch { prefs.setOnlineRecentlyPlayed(onlineRecentlyPlayedIds.toList()) }
     }
     // Cached per-track features (BPM, key) populated by the analyzer.
     private val _trackFeatures = MutableStateFlow<Map<String, com.beatdrop.kt.playback.TrackAnalyzer.TrackFeatures>>(emptyMap())
@@ -218,8 +220,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     /** Fetch or return cached discover data (re-fetches every 5 minutes) */
     fun getDiscoverData(forceRefresh: Boolean = false) {
         val now = System.currentTimeMillis()
-        if (!forceRefresh && now - _discoverLastFetch.value < 300_000L && _cachedTrending.value.isNotEmpty()) return
         if (_discoverLoading.value) return
+        if (!forceRefresh && now - _discoverLastFetch.value < 300_000L && _cachedTrending.value.isNotEmpty()) return
+        if (!forceRefresh && now - _discoverLastFetch.value < 60_000L && _cachedTrending.value.isNotEmpty()) return
         _discoverLoading.value = true
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
@@ -230,11 +233,13 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 _cachedPopHits.value = pop
                 _cachedHiphop.value = hiphop
                 _discoverLastFetch.value = System.currentTimeMillis()
-                // Persist to DataStore
-                runCatching {
-                    prefs.setDiscoverCache(
-                        com.beatdrop.kt.data.Prefs.DiscoverCache(trending, pop, hiphop, _discoverLastFetch.value)
-                    )
+                // Persist to DataStore only if data changed
+                val newCache = com.beatdrop.kt.data.Prefs.DiscoverCache(trending, pop, hiphop, _discoverLastFetch.value)
+                val idSet = { l: List<OnlineResult> -> l.map { it.videoId }.toSet() }
+                if (idSet(_cachedTrending.value) != idSet(trending) ||
+                    idSet(_cachedPopHits.value) != idSet(pop) ||
+                    idSet(_cachedHiphop.value) != idSet(hiphop)) {
+                    runCatching { prefs.setDiscoverCache(newCache) }
                 }
             }
             _discoverLoading.value = false
@@ -293,7 +298,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         prefs.privatePinFlow.onEach { _privatePin.value = it }.launchIn(viewModelScope)
         prefs.searchPlatformFlow.onEach { com.beatdrop.kt.youtube.OnlineSearch.searchPlatform = it }.launchIn(viewModelScope)
         prefs.smartShuffleFlow.onEach { _smartShuffle.value = it }.launchIn(viewModelScope)
-        prefs.onlineRecentlyPlayedFlow.onEach { onlineRecentlyPlayedIds.clear(); onlineRecentlyPlayedIds.addAll(it) }.launchIn(viewModelScope)
+        prefs.onlineRecentlyPlayedOrderedFlow.onEach { onlineRecentlyPlayedIds.clear(); onlineRecentlyPlayedIds.addAll(it) }.launchIn(viewModelScope)
     }
 
     // ── Queue / shuffle / repeat ──────────────────────────────────────────────
@@ -605,7 +610,20 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             val nextIdx = onlineContextIndex + 1
             if (nextIdx in onlineContext.indices) {
                 val nextResult = onlineContext[nextIdx]
-                // Preserve the context across the re-play call.
+                // Pre-resolve + queue the next track so lock screen shows "Next: <title>"
+                viewModelScope.launch {
+                    val nextTrack = runCatching { youtubeResultToTrack(nextResult) }.getOrNull()
+                    if (nextTrack != null) {
+                        _ytTrackCache[nextTrack.id] = nextTrack
+                        val c = controller
+                        if (c != null && c.mediaItemCount > 0) {
+                            val at = c.currentMediaItemIndex + 1
+                            if (at <= c.mediaItemCount && c.getMediaItemAt(minOf(at, c.mediaItemCount - 1)).mediaId != nextTrack.id) {
+                                c.addMediaItem(at, nextTrack.toMediaItem())
+                            }
+                        }
+                    }
+                }
                 prepareAndPlayOnline(nextResult, onlineContext, nextIdx)
                 return
             }
@@ -897,6 +915,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private fun triggerOnlineAutoMix(nextResult: OnlineResult, fadeMs: Long) {
         if (isCrossfading) return
         isCrossfading = true
+        val transitionId = ++autoMixSequence
         val synth = Track(
             id = "yt_${nextResult.videoId}",
             uri = android.net.Uri.EMPTY,
@@ -928,8 +947,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                     mainPlayer.volume = (1f - i.toFloat() / ticks).coerceIn(0f, 1f)
                     delay(stepMs)
                 }
+                mainPlayer.clearMediaItems()
                 mainPlayer.repeatMode = savedRepeatMode
-                mainPlayer.stop(); mainPlayer.clearMediaItems()
                 mainPlayer.setMediaItem(track.toMediaItem())
                 mainPlayer.prepare(); mainPlayer.play(); mainPlayer.volume = 1f
                 _current.value = track; _duration.value = track.durationMs
@@ -939,14 +958,17 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 loadLyrics(track)
                 prefs.incrementPlayCount("yt_${track.sourceVideoId}")
                 _onlineMessage.value = null
-                onlineContextIndex = onlineContext.indexOfFirst { it.videoId == nextResult.videoId }.coerceAtLeast(0)
+                val newIdx = onlineContext.indexOfFirst { it.videoId == nextResult.videoId }
+                if (newIdx >= 0) onlineContextIndex = newIdx
                 DebugLog.i("automix", "online ✅ → ${nextResult.title}")
             } catch (e: Exception) {
                 DebugLog.e("automix", "online crossfade failed", e)
                 runCatching { mainPlayer.volume = 1f }
                 runCatching { mainPlayer.repeatMode = savedRepeatMode }
             } finally {
-                isCrossfading = false; _mixingNext.value = null; crossfadeJob = null
+                if (autoMixSequence == transitionId) {
+                    isCrossfading = false; _mixingNext.value = null; crossfadeJob = null
+                }
             }
         }
     }
@@ -1045,7 +1067,33 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         if (prefetchedNextId == cur.id) return
         val library = _tracks.value
         if (library.isEmpty()) return
-        if (cur.isStreaming) return
+        if (cur.isStreaming) {
+            // Online prefetch: warm the playback cache by resolving next URL early
+            if (onlineContext.isEmpty()) return
+            prefetchInFlight = true
+            prefetchedNextId = cur.id
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val recentOnline = onlineRecentlyPlayedIds.toSet()
+                    val nextOnline = com.beatdrop.kt.playback.OnlineSmartShuffle.pickNext(
+                        OnlineResult(
+                            videoId = cur.sourceVideoId ?: cur.id.removePrefix("yt_"),
+                            title = cur.title, author = cur.artist,
+                            thumbnailUrl = cur.artworkOverride,
+                            durationText = "", durationSecs = (cur.durationMs / 1000).toInt(),
+                        ),
+                        onlineContext,
+                        recentOnline,
+                        _liked.value.mapNotNull { if (it.startsWith("yt_")) it.removePrefix("yt_") else null }.toSet(),
+                    ) ?: return@launch
+                    // Warm the cache by resolving the URL (result goes into 200 MB playback cache)
+                    runCatching { com.beatdrop.kt.youtube.getStream(nextOnline.videoId) }
+                    DebugLog.i("prefetch", "warmed online: ${nextOnline.title}")
+                } catch (_: Exception) {}
+                finally { prefetchInFlight = false }
+            }
+            return
+        }
         prefetchInFlight = true
         prefetchedNextId = cur.id
         viewModelScope.launch(Dispatchers.IO) {
@@ -1133,7 +1181,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── YouTube playback — resolve URL then play via ExoPlayer ────────────────
     // Cache of ytTrack objects so syncCurrent() can find them by mediaId
-    private val _ytTrackCache = mutableMapOf<String, Track>()
+    // LRU-evicted at 50 entries to prevent unbounded memory growth
+    private val _ytTrackCache = object : LinkedHashMap<String, Track>(50, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Track>?): Boolean = size > 50
+    }
 
     // Last failed online result — allows retry from UI
     private val _lastFailedOnline = MutableStateFlow<OnlineResult?>(null)
@@ -1149,6 +1200,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     @Volatile private var onlineContext: List<OnlineResult> = emptyList()
     @Volatile private var onlineContextIndex: Int = -1
 
+    /** Convenience: play a single online result (context=just this track).
+     *  pushRecentOnline is called inside prepareAndPlayOnline(). */
     fun playOnline(result: OnlineResult) {
         prepareAndPlayOnline(result)
     }
@@ -1308,6 +1361,28 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         DownloadManager.enqueue(result, getApplication())
     }
 
+    /** Download with full metadata resolution — fetches accurate duration/title before enqueueing */
+    fun downloadOnlineWithMetadata(videoId: String) {
+        if (videoId.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val track = _current.value
+            val result = runCatching {
+                OnlineSearch.provider.search("${track?.title} ${track?.artist}")
+            }.getOrDefault(emptyList())
+                .firstOrNull { it.videoId == videoId }
+                ?.copy(thumbnailUrl = track?.artworkOverride)
+                ?: com.beatdrop.kt.youtube.OnlineResult(
+                    videoId = videoId,
+                    title = track?.title ?: "",
+                    author = track?.artist ?: "",
+                    thumbnailUrl = track?.artworkOverride,
+                    durationText = "",
+                    durationSecs = ((track?.durationMs ?: 0L) / 1000L).toInt(),
+                )
+            DownloadManager.enqueue(result, getApplication())
+        }
+    }
+
     fun cancelDownload(videoId: String) {
         DownloadManager.cancel(videoId, getApplication())
     }
@@ -1353,6 +1428,15 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             durationSecs = 0,
             sourcePlatform = detected.platform,
         )
+        // Fetch related results so next/prev work
+        viewModelScope.launch(Dispatchers.IO) {
+            val related = runCatching {
+                OnlineSearch.provider.search(result.title.take(5).ifBlank { result.author })
+            }.getOrDefault(listOf(result))
+            val context = if (related.size > 1) related else listOf(result)
+            onlineContext = context
+            onlineContextIndex = context.indexOfFirst { it.videoId == videoId }.coerceAtLeast(0)
+        }
         playOnline(result)
     }
 

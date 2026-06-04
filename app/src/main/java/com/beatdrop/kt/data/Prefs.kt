@@ -190,11 +190,11 @@ class Prefs(private val context: Context) {
     val smartShuffleFlow: Flow<Boolean> = context.dataStore.data.map { it[Keys.SMART_SHUFFLE] ?: false }
     suspend fun setSmartShuffle(v: Boolean) { context.dataStore.edit { it[Keys.SMART_SHUFFLE] = v } }
 
-    val onlineRecentlyPlayedFlow: Flow<Set<String>> = context.dataStore.data.map { p ->
-        jsonArrayToSet(p[Keys.ONLINE_RECENTLY_PLAYED])
+    val onlineRecentlyPlayedOrderedFlow: Flow<List<String>> = context.dataStore.data.map { p ->
+        jsonArrayToList(p[Keys.ONLINE_RECENTLY_PLAYED])
     }
-    suspend fun setOnlineRecentlyPlayed(ids: Set<String>) {
-        context.dataStore.edit { it[Keys.ONLINE_RECENTLY_PLAYED] = JSONArray(ids.toList()).toString() }
+    suspend fun setOnlineRecentlyPlayed(ids: List<String>) {
+        context.dataStore.edit { it[Keys.ONLINE_RECENTLY_PLAYED] = JSONArray(ids).toString() }
     }
 
     // ── Discover screen cache ──────────────────────────────────────────────

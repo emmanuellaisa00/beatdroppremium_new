@@ -24,7 +24,7 @@ object OnlineSmartShuffle {
 
     // Keywords indicating a remix/variety variant — mild bonus for diversity
     private val remixKeywords = setOf(
-        "remix", "acoustic", "live", "cover", "edit", "extended",
+        "remix", "acoustic", "cover", "edit", "extended",
         "instrumental", "lo-fi", "lofi", "slowed", "sped up", "nightcore",
         "radio edit", "clean", "explicit",
     )
@@ -162,9 +162,13 @@ object OnlineSmartShuffle {
         // ── Step 2: greedy chain ──────────────────────────────────────────
         var cur = first
         while (remaining.isNotEmpty()) {
-            val next = pickNext(cur, remaining, recent, likedVideoIds)
-                ?: remaining.removeFirst()
-            remaining.remove(next)
+            val picked = pickNext(cur, remaining, recent, likedVideoIds)
+            val next = if (picked != null) {
+                remaining.remove(picked)
+                picked
+            } else {
+                remaining.removeFirst()
+            }
             result.add(next)
             recent.add(next.videoId)
 
