@@ -17,7 +17,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -81,9 +82,9 @@ fun LibraryScreen(
                 Text("Beat", style = Type.largeTitle, color = C.accent)   // Spotify Green
                 Text("Drop", style = Type.largeTitle, color = C.text)
             }
-            HeaderIcon(Icons.Filled.QueueMusic, "Playlists", onOpenPlaylists)
-            HeaderIcon(Icons.Filled.BarChart,   "Stats",     onOpenStats)
-            HeaderIcon(Icons.Filled.Explore,    "Discover",  onOpenLocalDiscover)
+            HeaderIcon(Icons.Outlined.QueueMusic, "Playlists", onOpenPlaylists)
+            HeaderIcon(Icons.Outlined.BarChart,   "Stats",     onOpenStats)
+            HeaderIcon(Icons.Outlined.Explore,    "Discover",  onOpenLocalDiscover)
         }
 
         // ── Search field — Glass stadium pill (blur 28px) ────────────────────
@@ -118,7 +119,7 @@ fun LibraryScreen(
                 .padding(horizontal = 18.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Filled.Search, null, tint = C.textTertiary, modifier = Modifier.size(18.dp))
+            Icon(Icons.Outlined.Search, null, tint = C.textTertiary, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(10.dp))
             Box(Modifier.weight(1f)) {
                 if (query.isEmpty()) Text("Search your library", style = Type.body, color = C.textTertiary)
@@ -216,7 +217,7 @@ private fun SongsList(vm: PlayerViewModel) {
                 ActionPill("Play", Icons.Filled.PlayArrow, C.accent, Color.White, Modifier.weight(1f)) {
                     if (list.isNotEmpty()) vm.playList(list, list.first().id)
                 }
-                ActionPill("Shuffle", Icons.Filled.Shuffle, C.bg3, C.text, Modifier.weight(1f)) {
+                ActionPill("Shuffle", Icons.Outlined.Shuffle, C.bg3, C.text, Modifier.weight(1f)) {
                     if (list.isNotEmpty()) vm.shuffleAll()
                 }
             }
@@ -390,7 +391,7 @@ private fun SongRow(song: Track, isCurrent: Boolean, onClick: () -> Unit, onLong
             )
             // Music note placeholder
             Icon(
-                Icons.Filled.MusicNote, null,
+                Icons.Outlined.MusicNote, null,
                 tint = C.textTertiary.copy(alpha = 0.5f),
                 modifier = Modifier.size(22.dp),
             )
@@ -428,7 +429,7 @@ private fun EmptyLibrary() {
         verticalArrangement   = Arrangement.Center,
         horizontalAlignment   = Alignment.CenterHorizontally,
     ) {
-        Icon(Icons.Filled.MusicNote, null, tint = C.textTertiary, modifier = Modifier.size(56.dp))
+        Icon(Icons.Outlined.MusicNote, null, tint = C.textTertiary, modifier = Modifier.size(56.dp))
         Spacer(Modifier.height(12.dp))
         Text("No music found", style = Type.title3, color = C.text)
         Text("Add audio files to your device.", style = Type.footnote, color = C.textSecondary)
@@ -477,7 +478,7 @@ private fun SortMenu(current: SortMode, onPick: (SortMode) -> Unit) {
                 .padding(horizontal = 12.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Filled.SwapVert, null, tint = C.textSecondary, modifier = Modifier.size(18.dp))
+            Icon(Icons.Outlined.SwapVert, null, tint = C.textSecondary, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text(current.label, style = Type.caption, color = C.text)
         }

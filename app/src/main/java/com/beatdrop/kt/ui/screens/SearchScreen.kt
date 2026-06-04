@@ -15,7 +15,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.*
@@ -120,7 +122,7 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
                         .padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Filled.WifiOff, null, tint = Color(0xFF856404), modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.WifiOff, null, tint = Color(0xFF856404), modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("You're offline. Search results won't load.", color = Color(0xFF856404), fontSize = 12.sp)
                 }
@@ -161,10 +163,10 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
                     value          = q,
                     onValueChange  = { vm.setOnlineQuery(it); if (it.length >= 2) vm.loadSuggestions() },
                     placeholder    = { Text("Search songs, artists, albums…", color = C.textTertiary) },
-                    leadingIcon    = { Icon(Icons.Filled.Search, null, tint = C.textTertiary) },
+                    leadingIcon    = { Icon(Icons.Outlined.Search, null, tint = C.textTertiary) },
                     trailingIcon   = {
                         if (q.isNotEmpty()) IconButton(onClick = { vm.setOnlineQuery("") }) {
-                            Icon(Icons.Filled.Close, "Clear", tint = C.textTertiary)
+                            Icon(Icons.Outlined.Close, "Clear", tint = C.textTertiary)
                         }
                     },
                     singleLine     = true,
@@ -214,7 +216,7 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
                                     .padding(vertical = 10.dp, horizontal = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(Icons.Filled.History, null, tint = C.textTertiary, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Outlined.History, null, tint = C.textTertiary, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(14.dp))
                                 Text(
                                     query, color = C.text, fontSize = 15.sp, maxLines = 1,
@@ -224,7 +226,7 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
                                     onClick  = { vm.deleteHistoryQuery(query) },
                                     modifier = Modifier.size(36.dp),
                                 ) {
-                                    Icon(Icons.Filled.Close, "Delete", tint = C.textTertiary, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Outlined.Close, "Delete", tint = C.textTertiary, modifier = Modifier.size(16.dp))
                                 }
                             }
                             HorizontalDivider(color = C.separator, thickness = 0.5.dp)
@@ -241,7 +243,7 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
                                     .padding(vertical = 12.dp, horizontal = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(Icons.Filled.Search, null, tint = C.textTertiary, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Outlined.Search, null, tint = C.textTertiary, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(14.dp))
                                 Text(suggestion, color = C.text, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
@@ -294,7 +296,7 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
                     Box(Modifier.fillMaxSize(), Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
-                                Icons.Filled.MusicNote, null,
+                                Icons.Outlined.MusicNote, null,
                                 tint     = C.textTertiary.copy(alpha = 0.6f),
                                 modifier = Modifier.size(64.dp),
                             )
@@ -412,7 +414,7 @@ private fun CatalogRow(
             modifier  = Modifier.size(36.dp),
         ) {
             Icon(
-                if (isSaved) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                if (isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
                 if (isSaved) "Saved to library" else "Save to library",
                 tint     = if (isSaved) C.accent else C.textTertiary,   // Green when saved
                 modifier = Modifier.size(22.dp),

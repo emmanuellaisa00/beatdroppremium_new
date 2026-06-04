@@ -11,7 +11,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -205,7 +209,7 @@ fun NowPlayingScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        Icons.Filled.AutoAwesome,
+                        Icons.Outlined.AutoAwesome,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(14.dp),
@@ -290,14 +294,14 @@ fun NowPlayingScreen(
                             val isFav = liked.contains(t.id)
                             IconButton(onClick = { vm.toggleLike(t.id) }) {
                                 Icon(
-                                    if (isFav) Icons.Filled.Star else Icons.Filled.StarBorder,
+                                    if (isFav) Icons.Filled.Star else Icons.Outlined.StarBorder,
                                     "Favourite",
                                     tint     = if (isFav) Color(0xFFFFCC00) else Color.White.copy(alpha = 0.80f),
                                     modifier = Modifier.size(22.dp),
                                 )
                             }
                             IconButton(onClick = { }) {
-                                Icon(Icons.Filled.MoreHoriz, "More",
+                                Icon(Icons.Outlined.MoreHoriz, "More",
                                     tint = Color.White.copy(alpha = 0.80f), modifier = Modifier.size(22.dp))
                             }
                         }
@@ -347,14 +351,14 @@ fun NowPlayingScreen(
                     val isFav = liked.contains(t.id)
                     IconButton(onClick = { vm.toggleLike(t.id) }) {
                         Icon(
-                            if (isFav) Icons.Filled.Star else Icons.Filled.StarBorder,
+                            if (isFav) Icons.Filled.Star else Icons.Outlined.StarBorder,
                             "Favourite",
                             tint     = if (isFav) Color(0xFFFFCC00) else Color.White.copy(alpha = 0.85f),
                             modifier = Modifier.size(24.dp),
                         )
                     }
                     IconButton(onClick = { showActions = true }) {
-                        Icon(Icons.Filled.MoreHoriz, "More",
+                        Icon(Icons.Outlined.MoreHoriz, "More",
                             tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(24.dp))
                     }
                 }
@@ -398,7 +402,7 @@ fun NowPlayingScreen(
             ) {
                 // Previous
                 IconButton(onClick = { vm.prev() }, modifier = Modifier.size(64.dp)) {
-                    Icon(Icons.Filled.SkipPrevious, null, tint = Color.White, modifier = Modifier.size(46.dp))
+                    Icon(Icons.Outlined.SkipPrevious, null, tint = Color.White, modifier = Modifier.size(46.dp))
                 }
 
                 // Play / pause — glass circle with green accent
@@ -429,7 +433,7 @@ fun NowPlayingScreen(
 
                 // Next
                 IconButton(onClick = { vm.next() }, modifier = Modifier.size(64.dp)) {
-                    Icon(Icons.Filled.SkipNext, null, tint = Color.White, modifier = Modifier.size(46.dp))
+                    Icon(Icons.Outlined.SkipNext, null, tint = Color.White, modifier = Modifier.size(46.dp))
                 }
             }
 
@@ -440,7 +444,7 @@ fun NowPlayingScreen(
                 Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Filled.VolumeDown, "Min volume",
+                Icon(Icons.Outlined.VolumeDown, "Min volume",
                     tint = Color.White.copy(alpha = 0.75f), modifier = Modifier.size(20.dp))
                 Slider(
                     value         = volume,
@@ -453,7 +457,7 @@ fun NowPlayingScreen(
                     ),
                     modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
                 )
-                Icon(Icons.Filled.VolumeUp, "Max volume",
+                Icon(Icons.Outlined.VolumeUp, "Max volume",
                     tint = Color.White.copy(alpha = 0.75f), modifier = Modifier.size(20.dp))
             }
 
@@ -488,7 +492,7 @@ fun NowPlayingScreen(
                 // Lyrics toggle — green accent when active
                 IconButton(onClick = { showLyrics = !showLyrics }) {
                     Icon(
-                        Icons.Filled.FormatQuote, "Lyrics",
+                        Icons.Outlined.FormatQuote, "Lyrics",
                         tint = if (showLyrics) C.accent else Color.White,
                         modifier = Modifier.size(26.dp),
                     )
@@ -496,13 +500,13 @@ fun NowPlayingScreen(
                 Box(Modifier.height(22.dp).width(0.8.dp).background(Color.White.copy(alpha = 0.22f)))
                 // AirPlay
                 IconButton(onClick = { com.beatdrop.kt.playback.AudioOutput.openSwitcher(ctx) }) {
-                    Icon(Icons.Filled.Airplay, "Audio output",
+                    Icon(Icons.Outlined.Airplay, "Audio output",
                         tint = Color.White, modifier = Modifier.size(24.dp))
                 }
                 Box(Modifier.height(22.dp).width(0.8.dp).background(Color.White.copy(alpha = 0.22f)))
                 // Queue
                 IconButton(onClick = onOpenQueue) {
-                    Icon(Icons.Filled.List, "Queue",
+                    Icon(Icons.AutoMirrored.Outlined.List, "Queue",
                         tint = Color.White, modifier = Modifier.size(26.dp))
                 }
             }

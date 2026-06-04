@@ -7,11 +7,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.PlaylistAdd
-import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.QueueMusic
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -57,12 +57,12 @@ fun TrackActionsSheet(vm: PlayerViewModel, track: Track, onDismiss: () -> Unit) 
         HorizontalDivider(color = C.separator)
 
         if (!showPlaylists) {
-            ActionItem(if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+            ActionItem(if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                 if (isLiked) "Remove from Liked" else "Add to Liked",
                 tint = if (isLiked) C.accent else C.text) { vm.toggleLike(track.id) }
-            ActionItem(Icons.Filled.QueueMusic, "Play next") { vm.playNext(track); onDismiss() }
-            ActionItem(Icons.Filled.Add, "Add to queue") { vm.addToQueueEnd(track); onDismiss() }
-            ActionItem(Icons.Filled.PlaylistAdd, "Add to playlist…") { showPlaylists = true }
+            ActionItem(Icons.Outlined.QueueMusic, "Play next") { vm.playNext(track); onDismiss() }
+            ActionItem(Icons.Outlined.Add, "Add to queue") { vm.addToQueueEnd(track); onDismiss() }
+            ActionItem(Icons.Outlined.PlaylistAdd, "Add to playlist…") { showPlaylists = true }
             Spacer(Modifier.height(24.dp))
         } else {
             Text("Add to playlist", color = C.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold,
@@ -73,7 +73,7 @@ fun TrackActionsSheet(vm: PlayerViewModel, track: Track, onDismiss: () -> Unit) 
             }
             LazyColumn(Modifier.heightIn(max = 320.dp)) {
                 items(playlists.keys.toList()) { name ->
-                    ActionItem(Icons.Filled.PlaylistAdd, name) {
+                    ActionItem(Icons.Outlined.PlaylistAdd, name) {
                         vm.addToPlaylist(name, track.id); onDismiss()
                     }
                 }

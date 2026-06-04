@@ -8,7 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,7 +50,7 @@ fun BrowserScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Filled.ArrowBack, "Back", tint = C.text)
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = C.text)
             }
             OutlinedTextField(
                 value = inputUrl,
@@ -184,7 +184,7 @@ fun BrowserScreen(
                 modifier = Modifier.align(Alignment.End).padding(16.dp),
                 containerColor = C.accent,
             ) {
-                Icon(Icons.Filled.Download, "Download detected video", tint = androidx.compose.ui.graphics.Color.White)
+                Icon(Icons.Outlined.Download, "Download detected video", tint = androidx.compose.ui.graphics.Color.White)
             }
         }
     }

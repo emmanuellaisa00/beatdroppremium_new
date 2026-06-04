@@ -13,9 +13,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -125,7 +125,7 @@ fun DiscoverScreen(vm: PlayerViewModel, onOpenSearch: () -> Unit = {}, onExpandP
                         .pressableScale(onClick = onOpenSearch, scaleTo = 0.85f),
                     Alignment.Center,
                 ) {
-                    Icon(Icons.Filled.Search, "Search online", tint = C.text, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Outlined.Search, "Search online", tint = C.text, modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -392,7 +392,7 @@ fun LocalDiscoverScreen(vm: PlayerViewModel, onBack: () -> Unit = {}, onOpenSear
                     .padding(start = Spacing.lg, end = Spacing.lg, top = 10.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "Back", tint = C.text) }
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = C.text) }
                 Text("Local Discover", style = Type.largeTitle, color = C.text, modifier = Modifier.weight(1f))
 
                 // Glass search button
@@ -426,7 +426,7 @@ fun LocalDiscoverScreen(vm: PlayerViewModel, onBack: () -> Unit = {}, onOpenSear
                         .pressableScale(onClick = onOpenSearch, scaleTo = 0.85f),
                     Alignment.Center,
                 ) {
-                    Icon(Icons.Filled.Search, "Search online", tint = C.text, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Outlined.Search, "Search online", tint = C.text, modifier = Modifier.size(20.dp))
                 }
             }
         }

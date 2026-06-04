@@ -7,7 +7,7 @@ import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -94,7 +94,7 @@ fun VideoPlayerScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, null, tint = Color.White)
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, null, tint = Color.White)
             }
             Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f), maxLines = 1)
@@ -109,7 +109,7 @@ fun VideoPlayerScreen(
                         activity.enterPictureInPictureMode(params)
                     } catch (_: Exception) { }
                 }) {
-                    Icon(Icons.Filled.PictureInPicture, "PiP", tint = Color.White)
+                    Icon(Icons.Outlined.PictureInPicture, "PiP", tint = Color.White)
                 }
             }
         }

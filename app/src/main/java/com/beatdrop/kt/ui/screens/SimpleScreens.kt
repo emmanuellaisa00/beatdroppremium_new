@@ -2,7 +2,7 @@ package com.beatdrop.kt.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,7 +17,7 @@ import com.beatdrop.kt.ui.theme.LocalAppColors
 fun PermissionPrompt(onRequest: () -> Unit) {
     val C = LocalAppColors.current
     Column(Modifier.fillMaxSize().padding(32.dp), Arrangement.Center, Alignment.CenterHorizontally) {
-        Icon(Icons.Filled.MusicNote, null, tint = C.accent, modifier = Modifier.size(64.dp))
+        Icon(Icons.Outlined.MusicNote, null, tint = C.accent, modifier = Modifier.size(64.dp))
         Spacer(Modifier.height(16.dp))
         Text("Allow access to your music", color = C.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         Spacer(Modifier.height(8.dp))

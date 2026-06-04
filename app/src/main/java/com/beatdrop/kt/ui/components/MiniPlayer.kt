@@ -13,7 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -220,7 +220,7 @@ fun MiniPlayer(
             // ── Skip next ───────────────────────────────────────────────────
             IconButton(onClick = onNext) {
                 Icon(
-                    imageVector = Icons.Filled.SkipNext,
+                    imageVector = Icons.Outlined.SkipNext,
                     contentDescription = null,
                     tint         = C.text,
                     modifier     = Modifier.size(22.dp),

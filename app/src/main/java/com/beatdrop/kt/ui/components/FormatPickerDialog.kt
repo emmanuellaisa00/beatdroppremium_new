@@ -8,7 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -128,7 +128,7 @@ private fun FormatRow(format: FormatOption, isAudio: Boolean, onClick: () -> Uni
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = if (isAudio) Icons.Filled.MusicNote else Icons.Filled.Videocam,
+            imageVector = if (isAudio) Icons.Outlined.MusicNote else Icons.Outlined.Videocam,
             contentDescription = null,
             tint = C.accent,
             modifier = Modifier.size(20.dp),

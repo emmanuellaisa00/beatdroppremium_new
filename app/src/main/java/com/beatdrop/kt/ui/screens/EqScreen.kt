@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,8 +39,8 @@ fun EqScreen(onBack: () -> Unit) {
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp), contentPadding = PaddingValues(bottom = 160.dp)) {
         item {
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "Back", tint = C.text) }
-                Icon(Icons.Filled.GraphicEq, null, tint = C.accent, modifier = Modifier.size(24.dp))
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = C.text) }
+                Icon(Icons.Outlined.GraphicEq, null, tint = C.accent, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Equalizer", color = C.text, fontWeight = FontWeight.Black, fontSize = 22.sp, modifier = Modifier.weight(1f))
                 Switch(checked = enabled, onCheckedChange = { EqEngine.setEnabled(it) },
