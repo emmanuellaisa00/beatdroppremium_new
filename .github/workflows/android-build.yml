@@ -37,22 +37,6 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*','**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      # Use default Gradle debug keystore (standard and reliable)
-        run: |
-          mkdir -p "$HOME/.android"
-          echo "MIIJ0wIBAzCCCZcGCSqGSIb3DQEHAaCCCYgEggmEMIIJgDCCBe8GCSqGSIb3DQEHBqCCBeAwggXcAgEAMIIF1QYJKoZIhvcNAQcBMBwGCiqGSIb3DQEMAQYwDgQI6DthTVV+GjQCAggAgIIFqOVZQxYmx7i6BfXMxdBi1hR0nL5vj4F9bMhp0MjnPO3h1Z6D22FDiJEH0FS/4w/SFayj0GxEwSvfBi6F6kSl+4CxYl3mXBqNvxilO/UpMfF/VVBk4m18FP32NqF8a1dIK7p63sCZqZQMp8eB0W8J+e4r7wqxJ5kxD5uxlLZk5P9kWHwWJmPG/EV1F/TqJlJ+0xd1P7b8WQ2T5y7f5gIH9sKqHr+3IfOZGb30kBGLn9K9vIBVDDVxYMz8V+YM0y4N/p1U1oR3m3m9K8S1g5x8K+hD0o7J4K6qR5v/j/7Q6vP5K1cP6vF4q2R5kj9Q5yJ5bN2rh5f5kHy2Q5k5xK+3F6qR5v/j/7Q6vP5K1cP6vF4q2R5kj9Q5yJ5bN2rh5f5kHy2Q5k5xK+3F5gIH9sKqHr+3IfOZGb30kBGLn9K9vIBVDDVxYMz8V+YM0y4N/p1U1oR3m3m9K8S1g5x8K+hD0o7J4K6qR5v/j/7Q6vP5K1cP6vF4q2R5kj9Q5yJ5bN2rh5f5kHy2Q5k5xK+3F" \
-            | base64 --decode > "$HOME/.android/debug.keystore" 2>/dev/null || true
-          # If the embedded keystore fails to decode (truncated), generate a fresh one
-          if [ ! -s "$HOME/.android/debug.keystore" ]; then
-            keytool -genkeypair -v \
-              -keystore "$HOME/.android/debug.keystore" \
-              -alias androiddebugkey \
-              -keyalg RSA -keysize 2048 -validity 36500 \
-              -storepass android -keypass android \
-              -dname "CN=BeatDrop,O=BeatDrop,C=US" 2>&1 | tail -1
-          fi
-          ls -la "$HOME/.android/debug.keystore"
-
       # ── Build debug APK ─────────────────────────────────────────────────────
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
