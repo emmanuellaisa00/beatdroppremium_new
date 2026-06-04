@@ -359,6 +359,15 @@ fun NowPlayingScreen(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
                             )
+                            // ✅ Improved online music UX: Show fetching state
+                            if (pos == 0L && dur == 0L) {
+                                Text(
+                                    "Fetching stream…",
+                                    color = C.accent.copy(alpha = 0.9f),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
                         }
                         Spacer(Modifier.height(3.dp))
                         Text(t.artist, color = Color.White.copy(alpha = 0.62f), fontSize = 15.sp,
@@ -468,6 +477,7 @@ fun NowPlayingScreen(
                 ) {
                     Icon(Ic.SkipNext, "Next", tint = Color.White, modifier = Modifier.size(46.dp))
                 }
+                // Note: During online fetch, next press is handled safely in ViewModel (onlineTransitionInProgress guard)
             }
 
             Spacer(Modifier.height(10.dp))
