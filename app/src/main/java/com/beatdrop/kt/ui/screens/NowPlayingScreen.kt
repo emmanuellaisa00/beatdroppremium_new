@@ -398,26 +398,66 @@ fun NowPlayingScreen(
                 }
             }
 
-            // ── Seek bar — accent green track ────────────────────────────────
+            // ── Seek bar — accent green track + diegetic buffer indicator ────
+            // The slider sits inside a Box so we can paint a thin buffer
+            // overlay on top of it. When the buffer is ahead of the playhead
+            // by ≥2 s a faint accent rail is drawn from pos→bufferedPos with
+            // a small pulsing dot at the buffer head. Communicates "ready
+            // ahead" without any text/spinner. Resting opacity is low so
+            // it never competes with the main track.
             val safeDur = dur.coerceAtLeast(1L)
-            Slider(
-                value         = pos.coerceIn(0, safeDur).toFloat(),
-                onValueChange = { vm.seekTo(it.toLong()) },
-                valueRange    = 0f..safeDur.toFloat(),
-                colors = SliderDefaults.colors(
-                    activeTrackColor   = C.accent,       // Spotify Green
-                    inactiveTrackColor = Color.White.copy(alpha = 0.22f),
-                    thumbColor         = Color.White,
-                ),
-                modifier = Modifier.fillMaxWidth().height(40.dp),
-                thumb = {
-                    Box(
-                        Modifier.size(28.dp).clip(CircleShape)
-                            .background(Color.White)
-                            .shadow(4.dp, CircleShape),
-                    )
-                },
+            val buffered by vm.bufferedPosition.collectAsState()
+            val bufferLeadMs = (buffered - pos).coerceAtLeast(0L)
+            val showBufferRail = t.isStreaming && bufferLeadMs >= 2_000L && safeDur > 0L
+            val bufferPulse by rememberInfiniteTransition(label = "buffer-pulse").animateFloat(
+                initialValue = 0.35f, targetValue = 0.85f,
+                animationSpec = infiniteRepeatable(tween(900, easing = EaseInOutSine), RepeatMode.Reverse),
+                label = "buffer-pulse-alpha",
             )
+            Box(Modifier.fillMaxWidth().height(40.dp)) {
+                Slider(
+                    value         = pos.coerceIn(0, safeDur).toFloat(),
+                    onValueChange = { vm.seekTo(it.toLong()) },
+                    valueRange    = 0f..safeDur.toFloat(),
+                    colors = SliderDefaults.colors(
+                        activeTrackColor   = C.accent,       // Spotify Green
+                        inactiveTrackColor = Color.White.copy(alpha = 0.22f),
+                        thumbColor         = Color.White,
+                    ),
+                    modifier = Modifier.fillMaxWidth().height(40.dp),
+                    thumb = {
+                        Box(
+                            Modifier.size(28.dp).clip(CircleShape)
+                                .background(Color.White)
+                                .shadow(4.dp, CircleShape),
+                        )
+                    },
+                )
+                if (showBufferRail) {
+                    androidx.compose.foundation.Canvas(
+                        modifier = Modifier.matchParentSize().padding(horizontal = 12.dp),
+                    ) {
+                        val w = size.width
+                        val centerY = size.height / 2f
+                        val posX = (pos.toFloat() / safeDur) * w
+                        val bufX = (buffered.coerceAtMost(safeDur).toFloat() / safeDur) * w
+                        // Faint accent rail from playhead → buffer head.
+                        drawLine(
+                            color = C.accent.copy(alpha = 0.35f),
+                            start = androidx.compose.ui.geometry.Offset(posX, centerY),
+                            end   = androidx.compose.ui.geometry.Offset(bufX, centerY),
+                            strokeWidth = 2.dp.toPx(),
+                            cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                        )
+                        // Pulsing dot at the buffer head.
+                        drawCircle(
+                            color = C.accent.copy(alpha = bufferPulse),
+                            radius = 3.dp.toPx(),
+                            center = androidx.compose.ui.geometry.Offset(bufX, centerY),
+                        )
+                    }
+                }
+            }
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 6.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,

@@ -57,6 +57,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private val _position  = MutableStateFlow(0L)
     val position: StateFlow<Long> = _position.asStateFlow()
 
+    /**
+     * Last known buffered position from the underlying player, in ms.
+     * Used by NowPlayingScreen to draw a small accent dot on the seek
+     * bar showing how far the buffer has filled past the playhead.
+     */
+    private val _bufferedPosition = MutableStateFlow(0L)
+    val bufferedPosition: StateFlow<Long> = _bufferedPosition.asStateFlow()
+
     private val _duration  = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
 
@@ -723,6 +731,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                     val pos = c.currentPosition.coerceAtLeast(0L)
                     val dur = c.duration
                     _position.value = pos
+                    _bufferedPosition.value = c.bufferedPosition.coerceAtLeast(pos)
                     if (dur > 0) {
                         _duration.value = dur
                         if (_autoDjEnabled.value && !isCrossfading) {
