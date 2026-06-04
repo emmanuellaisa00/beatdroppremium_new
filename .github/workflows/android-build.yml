@@ -74,9 +74,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: BeatDrop v1.1.0 build ${{ github.run_number }}
+          name: BeatDrop v1.2.0 build ${{ github.run_number }}
           body: |
-            BeatDrop Premium v1.1.0 — build ${{ github.run_number }}
+            BeatDrop Premium v1.2.0 — build ${{ github.run_number }}
             Commit: ${{ github.sha }}
 
             **Install:** Download `app-debug.apk`, enable "Install unknown apps" in Settings, and install.

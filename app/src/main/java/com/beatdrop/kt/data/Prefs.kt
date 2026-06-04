@@ -41,6 +41,7 @@ class Prefs(private val context: Context) {
         val SMART_SHUFFLE = booleanPreferencesKey("smart_shuffle")
         val ONLINE_RECENTLY_PLAYED = stringPreferencesKey("online_recently_played")
         val DISCOVER_CACHE = stringPreferencesKey("discover_cache")
+        val LAST_SEEN_WHATSNEW = intPreferencesKey("last_seen_whatsnew")
     }
 
     // ── liked ──
@@ -90,6 +91,12 @@ class Prefs(private val context: Context) {
     // Crossfade duration in milliseconds (default 8 s). UI slider exposes 4..12 s.
     val crossfadeMsFlow: Flow<Int> = context.dataStore.data.map { it[Keys.CROSSFADE_MS] ?: 8_000 }
     suspend fun setCrossfadeMs(v: Int) { context.dataStore.edit { it[Keys.CROSSFADE_MS] = v.coerceIn(4_000, 12_000) } }
+
+    // ── What's New sheet (version-gated, fresh-install does NOT show) ──
+    val lastSeenWhatsNewFlow: Flow<Int> = context.dataStore.data.map { it[Keys.LAST_SEEN_WHATSNEW] ?: -1 }
+    suspend fun setLastSeenWhatsNew(versionCode: Int) {
+        context.dataStore.edit { it[Keys.LAST_SEEN_WHATSNEW] = versionCode }
+    }
 
     // Optional self-hosted resolver backend URL (Cloudflare Worker / Render etc.)
     // Empty string = disabled. When set, used as Strategy 0 in the YouTube resolver.

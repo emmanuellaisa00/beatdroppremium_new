@@ -122,13 +122,53 @@ fun Root(vm: PlayerViewModel = viewModel()) {
         }
     }
 
+    // Read versionCode at runtime via PackageManager — avoids needing
+    // buildFeatures.buildConfig = true in Gradle (AGP 8+ default).
+    val currentVersionCode = remember {
+        runCatching {
+            val pm = context.packageManager
+            val info = pm.getPackageInfo(context.packageName, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode.toInt()
+            else @Suppress("DEPRECATION") info.versionCode
+        }.getOrDefault(0)
+    }
+
     var onboarded by rememberSaveable { mutableStateOf(false) }
     if (!onboarded && !perm.status.isGranted) {
-        OnboardingScreen(onGetStarted = { onboarded = true; perm.launchPermissionRequest() }); return
+        OnboardingScreen(onGetStarted = {
+            onboarded = true
+            perm.launchPermissionRequest()
+            // Fresh install — mark the *current* version as 'seen' so the
+            // What's New sheet doesn't show after onboarding. Existing
+            // users have lastSeen < currentVersionCode and will see the
+            // sheet on first launch after the update.
+            vm.markWhatsNewSeen(currentVersionCode)
+        }); return
     }
     if (!perm.status.isGranted) {
         PermissionPrompt(onRequest = { perm.launchPermissionRequest() })
         return
+    }
+
+    // ── What's New sheet (post-update, pre-content) ─────────────────────
+    // Show once per version bump for users who already onboarded. The sheet
+    // dismisses itself by writing currentVersionCode back to prefs.
+    var showWhatsNew by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(Unit) {
+        if (showWhatsNew == null) {
+            val seen = vm.lastSeenWhatsNew()
+            // Only show when we have a real prior install (seen >= 0) and
+            // we've actually bumped the version since.
+            showWhatsNew = seen in 0 until currentVersionCode
+        }
+    }
+    if (showWhatsNew == true) {
+        com.beatdrop.kt.ui.components.WhatsNewSheet(
+            onDismiss = {
+                vm.markWhatsNewSeen(currentVersionCode)
+                showWhatsNew = false
+            },
+        )
     }
 
     // Clipboard URL detection

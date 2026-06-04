@@ -141,6 +141,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { prefs.setCrossfadeMs(clamped) }
     }
 
+    // ── What's New version tracking ───────────────────────────────────────
+    /** Returns the last app versionCode the user has dismissed What's New for. */
+    suspend fun lastSeenWhatsNew(): Int = prefs.lastSeenWhatsNewFlow.first()
+    /** Record that the user has now seen What's New for [versionCode]. */
+    fun markWhatsNewSeen(versionCode: Int) {
+        viewModelScope.launch { prefs.setLastSeenWhatsNew(versionCode) }
+    }
+
     // ── Resolver backend (optional self-hosted yt-dlp proxy) ─────────────────
     private val _resolverBackend = MutableStateFlow("")
     val resolverBackend: StateFlow<String> = _resolverBackend.asStateFlow()
