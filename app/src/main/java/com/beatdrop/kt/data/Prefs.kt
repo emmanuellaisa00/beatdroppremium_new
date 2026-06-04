@@ -40,6 +40,7 @@ class Prefs(private val context: Context) {
         val SEARCH_PLATFORM = stringPreferencesKey("search_platform") // "YouTube"
         val SMART_SHUFFLE = booleanPreferencesKey("smart_shuffle")
         val ONLINE_RECENTLY_PLAYED = stringPreferencesKey("online_recently_played")
+        val DISCOVER_CACHE = stringPreferencesKey("discover_cache")
     }
 
     // ── liked ──
