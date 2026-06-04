@@ -216,9 +216,13 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
             Spacer(Modifier.height(8.dp))
 
             when {
-                searching -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    CircularProgressIndicator(color = C.accent, strokeWidth = 3.dp)
-                }
+                // No spinner — content-shaped silhouettes with accent shimmer
+                // sweep instead. The shape matches CatalogRow so there's no
+                // layout shift when real results arrive.
+                searching -> com.beatdrop.kt.ui.components.SearchResultSilhouettes(
+                    rowCount = 6,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
                 results.isNotEmpty() -> {
                     Text(
                         "${results.size} songs found",
@@ -233,6 +237,14 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
                     ) {
                         itemsIndexed(results, key = { _, r -> r.videoId }) { idx, r ->
                             val job = jobs[r.videoId]
+                            // Predictive prefetch — if the row stays on
+                            // screen >400 ms (i.e. user isn't fly-scrolling
+                            // past it), kick off a background stream
+                            // resolution so the next tap is ~instant.
+                            LaunchedEffect(r.videoId) {
+                                kotlinx.coroutines.delay(400)
+                                vm.prefetchOnlineUrl(r.videoId)
+                            }
                             CatalogRow(
                                 result  = r,
                                 isSaved = job?.status == DownloadStatus.COMPLETED,

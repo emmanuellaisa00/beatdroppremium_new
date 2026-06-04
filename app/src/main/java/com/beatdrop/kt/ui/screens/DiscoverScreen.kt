@@ -543,11 +543,14 @@ fun DiscoverShimmerContent() {
         label = "shimmerX",
     )
 
+    // Tinted accent shimmer — content materializing, not loading.
+    // The faint accent wash signals "your stuff is coming" rather than
+    // the neutral gray which read as "the app is broken / empty".
     val shimmerBrush = Brush.linearGradient(
         colors = listOf(
-            Color.White.copy(alpha = 0.05f),
-            Color.White.copy(alpha = 0.15f),
-            Color.White.copy(alpha = 0.05f),
+            C.accent.copy(alpha = 0.04f),
+            C.accent.copy(alpha = 0.12f),
+            C.accent.copy(alpha = 0.04f),
         ),
         start = Offset(xOffset, 0f),
         end   = Offset(xOffset + 200f, 200f),
