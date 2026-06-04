@@ -230,11 +230,19 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit, onOpenEq: () -> Unit
                     )
                 }
                 Spacer(Modifier.height(12.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(15, 30, 45, 60).forEach { m ->
-                        GlassChip("$m min", false) { vm.startSleepTimer(m) }
+                // ✅ UX18 Fixed: Use Switch + duration chips only when enabled
+                var sleepEnabled by remember { mutableStateOf(sleepLeft > 0) }
+                ToggleRow("Enable sleep timer", Ic.DarkMode, sleepEnabled) { enabled ->
+                    sleepEnabled = enabled
+                    if (!enabled) vm.cancelSleepTimer()
+                }
+                if (sleepEnabled) {
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(15, 30, 45, 60).forEach { m ->
+                            GlassChip("$m min", false) { vm.startSleepTimer(m) }
+                        }
                     }
-                    GlassChip("Off", sleepLeft == 0) { vm.cancelSleepTimer() }
                 }
             }
         }
