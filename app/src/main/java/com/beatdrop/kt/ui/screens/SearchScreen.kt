@@ -286,7 +286,7 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
                             )
                             Spacer(Modifier.height(12.dp))
                             Text(
-                                "No results for "$q"",
+                                "No results for \"$q\"",
                                 color     = C.textSecondary,
                                 fontSize  = 15.sp,
                                 fontWeight = FontWeight.Medium,
