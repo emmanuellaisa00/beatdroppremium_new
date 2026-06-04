@@ -1,6 +1,7 @@
 package com.beatdrop.kt.playback
 
 import com.beatdrop.kt.data.Track
+import com.beatdrop.kt.youtube.OnlineResult
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.ln
@@ -97,5 +98,82 @@ object AutoMixEngine {
             s += 15f * TrackAnalyzer.camelotScore(curFeat.keyCamelot, candFeat.keyCamelot)
         }
         return s
+    }
+
+    // ── Hybrid picker (online + local mixed pool) ─────────────────────────────
+
+    /**
+     * Pick the best next track from a mixed pool of local [Track]s and
+     * [OnlineResult]s, using whichever scorer is appropriate.
+     *
+     * Returns a Pair where exactly one side is non-null (the pick).
+     */
+    fun pickNextHybrid(
+        localPool: List<Track>,
+        onlinePool: List<OnlineResult>,
+        currentLocal: Track?,
+        currentOnline: OnlineResult?,
+        likedIds: Set<String>,
+        playCounts: Map<String, Int>,
+        recentlyPlayedLocalIds: Set<String>,
+        recentlyPlayedOnlineIds: Set<String>,
+        featuresById: Map<String, TrackAnalyzer.TrackFeatures>,
+        now: Long = System.currentTimeMillis(),
+    ): Pair<Track?, OnlineResult?> {
+        data class Scored(val track: Track?, val online: OnlineResult?, val score: Float)
+        var best = Scored(null, null, Float.NEGATIVE_INFINITY)
+        val maxPlays = (playCounts.values.maxOrNull() ?: 1).coerceAtLeast(1)
+
+        // When current is local, score local pool with the existing scorer
+        if (currentLocal != null && localPool.isNotEmpty()) {
+            val next = pickNext(currentLocal, localPool, likedIds, playCounts,
+                recentlyPlayedLocalIds, featuresById, now)
+            if (next != null) {
+                val s = score(currentLocal, next, featuresById[currentLocal.id],
+                    featuresById[next.id], likedIds, playCounts, maxPlays, now)
+                best = Scored(next, null, s)
+            }
+        }
+
+        // When current is online, score online pool with OnlineSmartShuffle
+        if (currentOnline != null && onlinePool.isNotEmpty()) {
+            val next = OnlineSmartShuffle.pickNext(
+                currentOnline, onlinePool, recentlyPlayedOnlineIds, likedIds)
+            if (next != null) {
+                val s = OnlineSmartShuffle.score(
+                    currentOnline, next, recentlyPlayedOnlineIds, likedIds)
+                if (s > best.score) best = Scored(null, next, s)
+            }
+        }
+
+        // Cross-source: online current → local candidates
+        if (currentOnline != null && localPool.isNotEmpty()) {
+            for (t in localPool) {
+                if (t.id in recentlyPlayedLocalIds) continue
+                val synthetic = OnlineResult(
+                    videoId = t.id, title = t.title, author = t.artist,
+                    thumbnailUrl = null, durationText = "",
+                    durationSecs = (t.durationMs / 1000).toInt())
+                val s = OnlineSmartShuffle.score(
+                    currentOnline, synthetic, recentlyPlayedOnlineIds + recentlyPlayedLocalIds, likedIds)
+                if (s > best.score) best = Scored(t, null, s)
+            }
+        }
+
+        // Cross-source: local current → online candidates
+        if (currentLocal != null && onlinePool.isNotEmpty()) {
+            for (o in onlinePool) {
+                if (o.videoId in recentlyPlayedOnlineIds) continue
+                val synth = Track(
+                    id = "yt_${o.videoId}", uri = android.net.Uri.EMPTY,
+                    title = o.title, artist = o.author, album = o.author,
+                    albumId = 0L, durationMs = o.durationSecs * 1000L,
+                    data = null, dateAdded = 0L)
+                val s = score(currentLocal, synth, null, null, likedIds, playCounts, maxPlays, now)
+                if (s > best.score) best = Scored(null, o, s)
+            }
+        }
+
+        return Pair(best.track, best.online)
     }
 }

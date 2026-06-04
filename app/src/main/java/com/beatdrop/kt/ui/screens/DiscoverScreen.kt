@@ -68,13 +68,14 @@ fun DiscoverScreen(vm: PlayerViewModel, onOpenSearch: () -> Unit = {}, onExpandP
     val cachedHiphop    by vm.cachedHiphop.collectAsState()
     val discoverLoading by vm.discoverLoading.collectAsState()
 
+    // Show cached data instantly, update when fresh data arrives
     LaunchedEffect(cachedTrending, cachedPopHits, cachedHiphop) {
         if (cachedTrending.isNotEmpty()) {
             trending    = cachedTrending
             popHits     = cachedPopHits
             hiphopHits  = cachedHiphop
             loading     = false
-        } else if (!discoverLoading) {
+        } else if (!discoverLoading && cachedTrending.isEmpty()) {
             loading = false
         }
     }

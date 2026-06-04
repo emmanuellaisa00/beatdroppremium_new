@@ -38,6 +38,8 @@ class Prefs(private val context: Context) {
         val DOWNLOAD_DIR_PATH = stringPreferencesKey("download_dir_path")
         val PRIVATE_PIN = stringPreferencesKey("private_pin")  // hashed PIN
         val SEARCH_PLATFORM = stringPreferencesKey("search_platform") // "YouTube"
+        val SMART_SHUFFLE = booleanPreferencesKey("smart_shuffle")
+        val ONLINE_RECENTLY_PLAYED = stringPreferencesKey("online_recently_played")
     }
 
     // ── liked ──
@@ -183,6 +185,88 @@ class Prefs(private val context: Context) {
 
     val searchPlatformFlow: Flow<String> = context.dataStore.data.map { it[Keys.SEARCH_PLATFORM] ?: "YouTube" }
     suspend fun setSearchPlatform(v: String) { context.dataStore.edit { it[Keys.SEARCH_PLATFORM] = v } }
+
+    val smartShuffleFlow: Flow<Boolean> = context.dataStore.data.map { it[Keys.SMART_SHUFFLE] ?: false }
+    suspend fun setSmartShuffle(v: Boolean) { context.dataStore.edit { it[Keys.SMART_SHUFFLE] = v } }
+
+    val onlineRecentlyPlayedFlow: Flow<Set<String>> = context.dataStore.data.map { p ->
+        jsonArrayToSet(p[Keys.ONLINE_RECENTLY_PLAYED])
+    }
+    suspend fun setOnlineRecentlyPlayed(ids: Set<String>) {
+        context.dataStore.edit { it[Keys.ONLINE_RECENTLY_PLAYED] = JSONArray(ids.toList()).toString() }
+    }
+
+    // ── Discover screen cache ──────────────────────────────────────────────
+    data class DiscoverCache(
+        val trending: List<com.beatdrop.kt.youtube.OnlineResult>,
+        val pop: List<com.beatdrop.kt.youtube.OnlineResult>,
+        val hiphop: List<com.beatdrop.kt.youtube.OnlineResult>,
+        val timestamp: Long = 0L,
+    )
+
+    val discoverCacheFlow: Flow<DiscoverCache> = context.dataStore.data.map { p ->
+        jsonToDiscoverCache(p[Keys.DISCOVER_CACHE])
+    }
+
+    suspend fun setDiscoverCache(cache: DiscoverCache) {
+        context.dataStore.edit { prefs ->
+            val obj = JSONObject()
+            obj.put("trending", onlineResultsToJson(cache.trending))
+            obj.put("pop", onlineResultsToJson(cache.pop))
+            obj.put("hiphop", onlineResultsToJson(cache.hiphop))
+            obj.put("ts", cache.timestamp)
+            prefs[Keys.DISCOVER_CACHE] = obj.toString()
+        }
+    }
+
+    private fun onlineResultsToJson(list: List<com.beatdrop.kt.youtube.OnlineResult>): JSONArray {
+        val arr = JSONArray()
+        for (r in list) {
+            val o = JSONObject()
+            o.put("videoId", r.videoId)
+            o.put("title", r.title)
+            o.put("author", r.author)
+            o.put("thumbnailUrl", r.thumbnailUrl ?: "")
+            o.put("durationText", r.durationText)
+            o.put("durationSecs", r.durationSecs)
+            o.put("isLive", r.isLive)
+            o.put("sourcePlatform", r.sourcePlatform)
+            o.put("sourceUrl", r.sourceUrl ?: "")
+            arr.put(o)
+        }
+        return arr
+    }
+
+    private fun jsonToDiscoverCache(s: String?): DiscoverCache {
+        if (s.isNullOrBlank()) return DiscoverCache(emptyList(), emptyList(), emptyList())
+        return runCatching {
+            val o = JSONObject(s)
+            DiscoverCache(
+                trending = jsonToOnlineResults(o.optJSONArray("trending")),
+                pop = jsonToOnlineResults(o.optJSONArray("pop")),
+                hiphop = jsonToOnlineResults(o.optJSONArray("hiphop")),
+                timestamp = o.optLong("ts", 0L),
+            )
+        }.getOrDefault(DiscoverCache(emptyList(), emptyList(), emptyList()))
+    }
+
+    private fun jsonToOnlineResults(arr: JSONArray?): List<com.beatdrop.kt.youtube.OnlineResult> {
+        if (arr == null) return emptyList()
+        return (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            com.beatdrop.kt.youtube.OnlineResult(
+                videoId = o.getString("videoId"),
+                title = o.getString("title"),
+                author = o.getString("author"),
+                thumbnailUrl = o.optString("thumbnailUrl", "").ifBlank { null },
+                durationText = o.optString("durationText", ""),
+                durationSecs = o.optInt("durationSecs", 0),
+                isLive = o.optBoolean("isLive", false),
+                sourcePlatform = o.optString("sourcePlatform", "YouTube"),
+                sourceUrl = o.optString("sourceUrl", "").ifBlank { null },
+            )
+        }
+    }
 
     // ── helpers ──
     private fun jsonArrayToList(s: String?): List<String> {

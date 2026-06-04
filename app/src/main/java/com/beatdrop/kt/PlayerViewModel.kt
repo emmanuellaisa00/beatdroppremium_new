@@ -176,6 +176,15 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         recentlyPlayedIds.addLast(id)
         while (recentlyPlayedIds.size > 6) recentlyPlayedIds.removeFirst()
     }
+    // Online-played ring — separate from local so cross-source transitions
+    // don't mistakenly exclude valid candidates.
+    private val onlineRecentlyPlayedIds = ArrayDeque<String>(8)
+    private fun pushRecentOnline(videoId: String) {
+        if (onlineRecentlyPlayedIds.lastOrNull() == videoId) return
+        onlineRecentlyPlayedIds.addLast(videoId)
+        while (onlineRecentlyPlayedIds.size > 6) onlineRecentlyPlayedIds.removeFirst()
+        viewModelScope.launch { prefs.setOnlineRecentlyPlayed(onlineRecentlyPlayedIds.toSet()) }
+    }
     // Cached per-track features (BPM, key) populated by the analyzer.
     private val _trackFeatures = MutableStateFlow<Map<String, com.beatdrop.kt.playback.TrackAnalyzer.TrackFeatures>>(emptyMap())
     val trackFeatures: StateFlow<Map<String, com.beatdrop.kt.playback.TrackAnalyzer.TrackFeatures>> = _trackFeatures.asStateFlow()
@@ -221,8 +230,29 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 _cachedPopHits.value = pop
                 _cachedHiphop.value = hiphop
                 _discoverLastFetch.value = System.currentTimeMillis()
+                // Persist to DataStore
+                runCatching {
+                    prefs.setDiscoverCache(
+                        com.beatdrop.kt.data.Prefs.DiscoverCache(trending, pop, hiphop, _discoverLastFetch.value)
+                    )
+                }
             }
             _discoverLoading.value = false
+        }
+    }
+
+    /** Load discover cache from disk — call once on startup */
+    fun loadDiscoverCache() {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val cache = prefs.discoverCacheFlow.first()
+                if (cache.trending.isNotEmpty()) {
+                    _cachedTrending.value = cache.trending
+                    _cachedPopHits.value = cache.pop
+                    _cachedHiphop.value = cache.hiphop
+                    _discoverLastFetch.value = cache.timestamp
+                }
+            }
         }
     }
 
@@ -262,6 +292,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         prefs.downloadDirPathFlow.onEach { com.beatdrop.kt.youtube.DownloadManagerV2.downloadDirPath = it.ifBlank { null } }.launchIn(viewModelScope)
         prefs.privatePinFlow.onEach { _privatePin.value = it }.launchIn(viewModelScope)
         prefs.searchPlatformFlow.onEach { com.beatdrop.kt.youtube.OnlineSearch.searchPlatform = it }.launchIn(viewModelScope)
+        prefs.smartShuffleFlow.onEach { _smartShuffle.value = it }.launchIn(viewModelScope)
+        prefs.onlineRecentlyPlayedFlow.onEach { onlineRecentlyPlayedIds.clear(); onlineRecentlyPlayedIds.addAll(it) }.launchIn(viewModelScope)
     }
 
     // ── Queue / shuffle / repeat ──────────────────────────────────────────────
@@ -271,6 +303,17 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private val _shuffle = MutableStateFlow(false)
     val shuffle: StateFlow<Boolean> = _shuffle.asStateFlow()
     fun toggleShuffle() { _shuffle.value = !_shuffle.value; controller?.shuffleModeEnabled = _shuffle.value }
+
+    private val _smartShuffle = MutableStateFlow(false)
+    val smartShuffle: StateFlow<Boolean> = _smartShuffle.asStateFlow()
+    fun toggleSmartShuffle() {
+        val v = !_smartShuffle.value
+        _smartShuffle.value = v
+        viewModelScope.launch { prefs.setSmartShuffle(v) }
+        if (v && _current.value?.isStreaming == true && onlineContext.isNotEmpty()) {
+            smartShuffleOnlineContext()
+        }
+    }
 
     private val _repeat = MutableStateFlow(Player.REPEAT_MODE_OFF)
     val repeat: StateFlow<Int> = _repeat.asStateFlow()
@@ -351,6 +394,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         com.beatdrop.kt.util.NetworkMonitor.init(getApplication())
         observePrefs()
         observeDownloadCompletions()
+        loadDiscoverCache()
         val token = SessionToken(getApplication(), ComponentName(getApplication(), PlaybackService::class.java))
         val future = MediaController.Builder(getApplication(), token).buildAsync()
         future.addListener({
@@ -674,19 +718,65 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val cur = _current.value ?: return
         val library = _tracks.value
         if (library.isEmpty()) return
-        // Don't auto-mix online (streaming/YouTube) tracks — the second player
-        // doesn't have our ResolvingDataSource and can 403 unpredictably.
-        if (cur.isStreaming) return
+        // ── Smart Shuffle hybrid path ──────────────────────────────────────
+        // When Smart Shuffle is on and the current track is online, use the
+        // hybrid picker that can mix local and online candidates.  When the
+        // current track is local, still use the pure-local scorer unless the
+        // user has an online context open (in which case we blend).
+        if (cur.isStreaming) {
+            // Online track: use the hybrid picker
+            val recentOnline = onlineRecentlyPlayedIds.toSet()
+            val (localPick, onlinePick) = com.beatdrop.kt.playback.AutoMixEngine.pickNextHybrid(
+                localPool = library,
+                onlinePool = onlineContext,
+                currentLocal = null,
+                currentOnline = OnlineResult(
+                    videoId = cur.sourceVideoId ?: cur.id.removePrefix("yt_"),
+                    title = cur.title, author = cur.artist,
+                    thumbnailUrl = cur.artworkOverride,
+                    durationText = "", durationSecs = (cur.durationMs / 1000).toInt(),
+                ),
+                likedIds = _liked.value,
+                playCounts = _playCounts.value,
+                recentlyPlayedLocalIds = recentlyPlayedIds.toSet(),
+                recentlyPlayedOnlineIds = recentOnline,
+                featuresById = _trackFeatures.value,
+            )
+            if (onlinePick != null) {
+                triggerOnlineAutoMix(onlinePick, fadeMs)
+                return
+            }
+            // Online mode: smart shuffle picks online only — don't fall through to local
+            return
+        }
 
-        // Pick the next track with the full Tier-2 scorer.
+        // ── Local track: use the hybrid picker when online context exists ────
         val recent = (recentlyPlayedIds + cur.id).toSet()
-        val next = com.beatdrop.kt.playback.AutoMixEngine.pickNext(
-            current = cur, library = library, likedIds = _liked.value,
-            playCounts = _playCounts.value, recentlyPlayedIds = recent,
-            featuresById = _trackFeatures.value,
-        ) ?: return
-        // Skip online or unsupported items the picker might let through.
-        if (next.isStreaming) return
+        val recentOnline = onlineRecentlyPlayedIds.toSet()
+        val next = if (onlineContext.isNotEmpty() && _smartShuffle.value) {
+            val (localPick, onlinePick) = com.beatdrop.kt.playback.AutoMixEngine.pickNextHybrid(
+                localPool = library,
+                onlinePool = onlineContext,
+                currentLocal = cur,
+                currentOnline = null,
+                likedIds = _liked.value,
+                playCounts = _playCounts.value,
+                recentlyPlayedLocalIds = recent,
+                recentlyPlayedOnlineIds = recentOnline,
+                featuresById = _trackFeatures.value,
+            )
+            if (onlinePick != null) {
+                triggerOnlineAutoMix(onlinePick, fadeMs)
+                return
+            }
+            localPick
+        } else {
+            com.beatdrop.kt.playback.AutoMixEngine.pickNext(
+                current = cur, library = library, likedIds = _liked.value,
+                playCounts = _playCounts.value, recentlyPlayedIds = recent,
+                featuresById = _trackFeatures.value,
+            )
+        } ?: return
 
         isCrossfading = true
         _mixingNext.value = next
@@ -792,6 +882,91 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 crossfadeJob = null
             }
         }
+    }
+
+
+    /**
+     * Online Auto-Mix transition — resolves the next track's stream URL and
+     * hands off playback.  Since we can't use Deck B for online streams
+     * (ResolvingDataSource requires the main player's pipeline), we do a
+     * "soft handoff": resolve → set next media item → seek to next.
+     *
+     * The 200 MB playback cache makes re-resolution nearly instant for
+     * recently-played tracks, so the gap is usually < 200 ms.
+     */
+    private fun triggerOnlineAutoMix(nextResult: OnlineResult, fadeMs: Long) {
+        if (isCrossfading) return
+        isCrossfading = true
+        val synth = Track(
+            id = "yt_${nextResult.videoId}",
+            uri = android.net.Uri.EMPTY,
+            title = nextResult.title,
+            artist = nextResult.author,
+            album = nextResult.author,
+            albumId = 0L,
+            durationMs = nextResult.durationSecs * 1000L,
+            data = null,
+            dateAdded = System.currentTimeMillis(),
+            artworkOverride = nextResult.thumbnailUrl,
+        )
+        _mixingNext.value = synth
+        val mainPlayer = controller ?: run { isCrossfading = false; _mixingNext.value = null; return }
+        savedRepeatMode = mainPlayer.repeatMode
+
+        crossfadeJob = viewModelScope.launch {
+            try {
+                val track = runCatching { youtubeResultToTrack(nextResult) }.getOrElse { err ->
+                    DebugLog.e("automix", "online resolve failed: ${err.message}")
+                    isCrossfading = false; _mixingNext.value = null
+                    return@launch
+                }
+                _ytTrackCache[track.id] = track
+
+                // Short fade-out → handoff → fade-in
+                val ticks = 30; val stepMs = (fadeMs / ticks).coerceAtLeast(16L)
+                for (i in 0..ticks) {
+                    mainPlayer.volume = (1f - i.toFloat() / ticks).coerceIn(0f, 1f)
+                    delay(stepMs)
+                }
+                mainPlayer.repeatMode = savedRepeatMode
+                mainPlayer.stop(); mainPlayer.clearMediaItems()
+                mainPlayer.setMediaItem(track.toMediaItem())
+                mainPlayer.prepare(); mainPlayer.play(); mainPlayer.volume = 1f
+                _current.value = track; _duration.value = track.durationMs
+                prefetchedNextId = null
+                pushRecent("yt_${track.sourceVideoId}")
+                pushRecentOnline(track.sourceVideoId ?: "")
+                loadLyrics(track)
+                prefs.incrementPlayCount("yt_${track.sourceVideoId}")
+                _onlineMessage.value = null
+                onlineContextIndex = onlineContext.indexOfFirst { it.videoId == nextResult.videoId }.coerceAtLeast(0)
+                DebugLog.i("automix", "online ✅ → ${nextResult.title}")
+            } catch (e: Exception) {
+                DebugLog.e("automix", "online crossfade failed", e)
+                runCatching { mainPlayer.volume = 1f }
+                runCatching { mainPlayer.repeatMode = savedRepeatMode }
+            } finally {
+                isCrossfading = false; _mixingNext.value = null; crossfadeJob = null
+            }
+        }
+    }
+
+    /**
+     * Reorder the current onlineContext into a smart-shuffle sequence.
+     * The currently-playing track stays at index 0; everything else is
+     * reordered via OnlineSmartShuffle.buildSmartQueue().
+     */
+    private fun smartShuffleOnlineContext() {
+        if (onlineContext.size <= 1) return
+        val curIdx = onlineContextIndex.coerceIn(0, onlineContext.size - 1)
+        val likedIds = _liked.value.mapNotNull { id ->
+            if (id.startsWith("yt_")) id.removePrefix("yt_") else null
+        }.toSet()
+        val reordered = com.beatdrop.kt.playback.OnlineSmartShuffle.buildSmartQueue(
+            pool = onlineContext, likedVideoIds = likedIds, startIndex = curIdx,
+        )
+        onlineContext = reordered
+        onlineContextIndex = 0
     }
 
     /** Cancel a fade-in-progress (called when the user skips, seeks, or pauses). */
@@ -1051,6 +1226,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             // Allow syncCurrent to run again — the new item is now active in ExoPlayer
             onlineTransitionInProgress = false
             _current.value = track; _duration.value = track.durationMs
+            pushRecent("yt_${track.sourceVideoId}")
+            pushRecentOnline(track.sourceVideoId ?: "")
             loadLyrics(track)
             _fetchingVideoId.value = null
         }
@@ -1098,6 +1275,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 c.setMediaItem(track.toMediaItem()); c.prepare(); c.play()
                 onlineTransitionInProgress = false
                 _current.value = track; _duration.value = track.durationMs
+                pushRecent("yt_${track.sourceVideoId}")
+                pushRecentOnline(track.sourceVideoId ?: "")
                 loadLyrics(track)
                 _fetchingVideoId.value = null
             } else {
@@ -1114,6 +1293,16 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     val downloadJobs: StateFlow<Map<String, DownloadJob>> = DownloadManager.jobs
 
     fun downloadJobFor(videoId: String): DownloadJob? = DownloadManager.jobs.value[videoId]
+
+    /** Check if an online track has been downloaded locally */
+    fun isOnlineDownloaded(videoId: String): Boolean {
+        return _tracks.value.any { it.id == "dl_$videoId" }
+    }
+
+    /** Get the local Track for a downloaded online video, or null */
+    fun downloadedTrackFor(videoId: String): Track? {
+        return _tracks.value.firstOrNull { it.id == "dl_$videoId" }
+    }
 
     fun downloadOnline(result: OnlineResult) {
         DownloadManager.enqueue(result, getApplication())

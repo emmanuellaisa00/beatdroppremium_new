@@ -169,6 +169,7 @@ fun Root(vm: PlayerViewModel = viewModel()) {
 private val TABS = listOf(
     TabSpec2("library",  "Library",  Ic.Library, Ic.Library),
     TabSpec2("discover", "Discover", Ic.Discover,      Ic.Discover),
+    TabSpec2("search",   "Search",   Ic.Search,     Ic.Search),
     TabSpec2("radio",    "Radio",    Ic.Podcast,     Ic.Podcast),
     TabSpec2("settings", "Settings", Ic.Settings,     Ic.Settings),
 )
@@ -400,6 +401,7 @@ private fun TabsHost(
                     "library"  -> LibraryScreen(vm, onOpenAlbum = onOpenAlbum, onOpenArtist = onOpenArtist,
                         onOpenLocalDiscover = onOpenLocalDiscover, onOpenPlaylists = onOpenPlaylists, onOpenStats = onOpenStats)
                     "discover" -> DiscoverScreen(vm, onOpenSearch = onOpenSearch, onExpandPlayer = onExpandPlayer)
+                    "search"   -> SearchScreen(vm, onExpandPlayer = onExpandPlayer)
                     "radio"    -> RadioScreen(vm)
                     "settings" -> SettingsScreen(vm, onBack = {}, onOpenEq = onOpenEq, onOpenDebug = onOpenDebug)
                 }

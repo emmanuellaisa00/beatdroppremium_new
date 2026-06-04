@@ -95,6 +95,7 @@ object Ic {
     val DeleteSweep       : ImageVector get() = Lucide.Trash
     val Share             : ImageVector get() = Lucide.Share
     val Download          : ImageVector get() = Lucide.Download
+    val Check             : ImageVector get() = Lucide.Check
     val Refresh           : ImageVector get() = Lucide.RotateCw
     val Restore           : ImageVector get() = Lucide.Undo
     val Copy              : ImageVector get() = Lucide.Copy

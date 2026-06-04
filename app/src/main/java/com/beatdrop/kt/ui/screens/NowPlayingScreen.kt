@@ -59,6 +59,7 @@ fun NowPlayingScreen(
     val ctx           = LocalContext.current
     val track         by vm.current.collectAsState()
     val isPlaying     by vm.isPlaying.collectAsState()
+    val smartShuffle  by vm.smartShuffle.collectAsState()
     val pos           by vm.position.collectAsState()
     val dur           by vm.duration.collectAsState()
     val lyrics        by vm.lyrics.collectAsState()
@@ -504,6 +505,40 @@ fun NowPlayingScreen(
                         Ic.Lyrics, "Lyrics",
                         tint = if (showLyrics) C.accent else Color.White,
                         modifier = Modifier.size(26.dp),
+                    )
+                }
+                Box(Modifier.height(22.dp).width(0.8.dp).background(Color.White.copy(alpha = 0.22f)))
+                // Smart Shuffle — sparkle accent when active
+                IconButton(onClick = { vm.toggleSmartShuffle() }) {
+                    Icon(
+                        if (smartShuffle) Ic.Sparkles else Ic.Shuffle,
+                        "Smart Shuffle",
+                        tint = if (smartShuffle) C.accent else Color.White,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Box(Modifier.height(22.dp).width(0.8.dp).background(Color.White.copy(alpha = 0.22f)))
+                // Download — shows tick if already saved locally
+                val videoId = track?.sourceVideoId
+                val isDownloaded = videoId != null && vm.isOnlineDownloaded(videoId)
+                IconButton(onClick = {
+                    if (videoId != null && !isDownloaded) {
+                        val result = com.beatdrop.kt.youtube.OnlineResult(
+                            videoId = videoId,
+                            title = track?.title ?: "",
+                            author = track?.artist ?: "",
+                            thumbnailUrl = track?.artworkOverride,
+                            durationText = "",
+                            durationSecs = ((track?.durationMs ?: 0L) / 1000L).toInt(),
+                        )
+                        vm.downloadOnline(result)
+                    }
+                }) {
+                    Icon(
+                        if (isDownloaded) Ic.Check else Ic.Download,
+                        if (isDownloaded) "Downloaded" else "Download",
+                        tint = if (isDownloaded) C.accent else Color.White,
+                        modifier = Modifier.size(24.dp),
                     )
                 }
                 Box(Modifier.height(22.dp).width(0.8.dp).background(Color.White.copy(alpha = 0.22f)))
