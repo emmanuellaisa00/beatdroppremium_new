@@ -228,6 +228,7 @@ object Spacing {
 // Blur Budget (60fps target)
 // ═══════════════════════════════════════════════════════════════════════════════
 object Blur {
+    val subtle = 8f    // List rows, dense small-text surfaces (Search/Trending/etc.)
     val light  = 16f   // Cards, compact elements
     val medium = 28f   // Medium cards, elevated surfaces
     val heavy  = 40f   // Navigation bar

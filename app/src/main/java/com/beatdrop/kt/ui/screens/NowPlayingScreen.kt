@@ -68,7 +68,11 @@ fun NowPlayingScreen(
     val volume        by vm.volume.collectAsState()
     val mixingNext    by vm.mixingNext.collectAsState()
     var showLyrics    by remember { mutableStateOf(false) }
+    var fullLyrics    by remember { mutableStateOf(false) }
     var showActions   by remember { mutableStateOf(false) }
+    // Tap on any preview lyric line ⇒ expand to full-screen.
+    // When `fullLyrics` is true, the existing onSeek wiring is what runs
+    // (so taps in full mode = seek to that line, like Apple Music).
 
     val t = track ?: run {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -320,6 +324,12 @@ fun NowPlayingScreen(
                                 activeIndex = activeLyric,
                                 modifier    = Modifier.weight(1f),
                                 onSeek      = { vm.seekTo(it) },
+                                // In the preview pane, swallow per-line taps
+                                // and expand to full-screen lyrics instead.
+                                // (The active line still stays pinned to
+                                // viewport-centre via AppleLyrics' own
+                                // dynamic centring.)
+                                onTapAny    = { fullLyrics = true },
                             )
                         }
                     }
@@ -486,7 +496,10 @@ fun NowPlayingScreen(
                 verticalAlignment     = Alignment.CenterVertically,
             ) {
                 // Lyrics toggle — green accent when active
-                IconButton(onClick = { showLyrics = !showLyrics }) {
+                IconButton(onClick = {
+                    showLyrics = !showLyrics
+                    if (!showLyrics) fullLyrics = false  // close full mode when leaving lyrics
+                }) {
                     Icon(
                         Ic.Lyrics, "Lyrics",
                         tint = if (showLyrics) C.accent else Color.White,
@@ -504,6 +517,56 @@ fun NowPlayingScreen(
                 IconButton(onClick = onOpenQueue) {
                     Icon(Ic.Queue, "Queue",
                         tint = Color.White, modifier = Modifier.size(26.dp))
+                }
+            }
+        }
+
+        // ── Full-screen lyrics overlay ─────────────────────────────────────
+        // Triggered by tapping any line in the preview lyrics pane. Fills
+        // the entire NowPlaying viewport (above transport, above header)
+        // so the active line — still centred dynamically by AppleLyrics —
+        // sits in the true middle of the screen. Tap any line here to
+        // seek; tap the ✕ to collapse back to the preview pane.
+        AnimatedVisibility(
+            visible = fullLyrics && showLyrics && lyrics.isNotEmpty(),
+            enter   = fadeIn(tween(220)),
+            exit    = fadeOut(tween(180)),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                artColor.copy(alpha = 0.92f),
+                                if (C.isDark) Color(0xFF050505) else Color(0xFF111122),
+                            )
+                        )
+                    ),
+            ) {
+                AppleLyrics(
+                    lines       = lyrics,
+                    activeIndex = activeLyric,
+                    modifier    = Modifier.fillMaxSize(),
+                    onSeek      = { vm.seekTo(it) },
+                    // No onTapAny here → taps fall through to onSeek
+                    // (proper Apple Music behaviour in full mode).
+                )
+                // Close button — small floating glass puck top-right
+                IconButton(
+                    onClick = { fullLyrics = false },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .statusBarsPadding()
+                        .padding(12.dp)
+                        .size(40.dp),
+                ) {
+                    Icon(
+                        Ic.Close, "Close lyrics",
+                        tint = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.size(22.dp),
+                    )
                 }
             }
         }

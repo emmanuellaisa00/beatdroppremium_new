@@ -14,6 +14,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -404,7 +405,29 @@ private fun TabsHost(
                 }
             }
         }
-        Column(Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) {
+        // ── Bottom dock backdrop scrim ──────────────────────────────────────
+        // The page scrollable above ends at fillMaxSize → its bottom rows
+        // scroll under the MiniPlayer + GlassTabBar. The dock surfaces
+        // sample THAT through their backdrop blur, smearing list text into
+        // the glass. A short vertical-gradient scrim (transparent at top,
+        // bg0 at bottom) sits BEHIND the dock so haze samples the scrim,
+        // not the page content. Doesn't touch MiniPlayer/TabBar internals.
+        Column(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .drawBehind {
+                    val scrim = C.bg0
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            0f    to Color.Transparent,
+                            0.25f to scrim.copy(alpha = 0.55f),
+                            1f    to scrim,
+                        ),
+                    )
+                }
+                .navigationBarsPadding(),
+        ) {
             Box(Modifier.fillMaxWidth().background(Color.Transparent)) {
                 current?.let { t ->
                     MiniPlayer(

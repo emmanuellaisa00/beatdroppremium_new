@@ -310,20 +310,24 @@ fun TintedGlassButton(
  * Renders the full stack per spec §2:
  *   Shadow → Surface → Blur → Noise → Reflection → Inner shadow → Border.
  */
+/**
+ * Glass card for hero blocks, album/artist art frames, mix tiles, dialog
+ * surfaces. Default blur 16 dp — strong enough to read as "frosted" but
+ * gentle enough that 16–22 sp titles laid on top stay crisp. The tint
+ * carries the body of the surface.
+ */
 @SuppressLint("NewApi")
 @Composable
 fun Modifier.glassCard(
     radius: Dp = Radius.md,
-    blur: Float = 28f,
+    blur: Float = Blur.light,
 ): Modifier {
     val C = LocalAppColors.current
     val shape = RoundedCornerShape(radius)
     return this
         .glassShadow(elevation = 15.dp, shape = shape, isDark = C.isDark)
         .clip(shape)
-        // Real backdrop blur (no-op outside ScreenScaffold). Tints the
-        // blurred backdrop with the surface color so we get a single
-        // composited layer instead of stacking transparent surfaces.
+        // Real backdrop blur (no-op outside ScreenScaffold).
         .hazeGlass(shape = shape, tintColor = C.glassCardElevated, blurRadius = blur.dp)
         // Background fallback for screens without a HazeState (hazeGlass
         // is a no-op there) — the tinted glass surface still shows.
@@ -361,18 +365,27 @@ fun Modifier.glassCard(
  * Glass row — list-row variant of glassCard with smaller radius/blur,
  * tuned for 60fps in long LazyColumns.
  */
+/**
+ * Glass row — list-row variant of glassCard tuned for dense small-text
+ * surfaces (Search results, Trending, Discover rows, Library tracks).
+ *
+ * Default blur is intentionally low (Blur.subtle = 8 dp). Anything larger
+ * smears 13–14 sp body text into a fog. The substantial tint (alpha 0.95)
+ * does most of the visual work; the blur is a hint, not a wash.
+ */
 @SuppressLint("NewApi")
 @Composable
 fun Modifier.glassRow(
     radius: Dp = Radius.sm,
-    blur: Float = Blur.light,
+    blur: Float = Blur.subtle,
 ): Modifier {
     val C = LocalAppColors.current
     val shape = RoundedCornerShape(radius)
+    val tint = C.glassCardElevated.copy(alpha = 0.95f)
     return this
         .clip(shape)
-        .hazeGlass(shape = shape, tintColor = C.glassCardElevated.copy(alpha = 0.85f), blurRadius = blur.dp)
-        .background(C.glassCardElevated.copy(alpha = 0.85f))
+        .hazeGlass(shape = shape, tintColor = tint, blurRadius = blur.dp)
+        .background(tint)
         .drawWithContent {
             drawContent()
             drawRect(

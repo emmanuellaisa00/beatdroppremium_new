@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -31,10 +32,13 @@ import kotlin.math.abs
  *  ± 3 lines    — 18 sp, 24% alpha, blur 6px
  *  further      — 17 sp, 14% alpha, blur 10px
  *
- *  - Top & bottom gradient fade so text dissolves into the background
- *  - Auto-scrolls to keep the active line vertically centred
- *  - Tap any line to seek to it
- *  - Pulsing dot placeholder for instrumental gaps
+ *  - Top & bottom gradient fade so text dissolves into the background.
+ *  - Active line auto-scrolls to the **actual vertical centre** of the
+ *    viewport (computed from BoxWithConstraints — no magic number).
+ *  - Tap-to-expand: pass `onTapAny` (e.g. preview mode) to handle every
+ *    tap as "open full lyrics". When omitted (full mode), taps fall back
+ *    to `onSeek(line.timeMs)` to seek to that line.
+ *  - Pulsing dot placeholder for instrumental gaps.
  */
 @Composable
 fun AppleLyrics(
@@ -42,40 +46,52 @@ fun AppleLyrics(
     activeIndex: Int,
     modifier: Modifier = Modifier,
     onSeek: (Long) -> Unit = {},
+    onTapAny: (() -> Unit)? = null,
 ) {
     val state = rememberLazyListState()
+    val density = LocalDensity.current
 
-    // Smooth-scroll the active line to roughly 1/3 from the top
-    LaunchedEffect(activeIndex) {
-        if (activeIndex >= 0) {
-            state.animateScrollToItem(
-                index = activeIndex.coerceAtLeast(0),
-                scrollOffset = -340,
-            )
-        }
-    }
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        // Center offset = viewport height / 2, in pixels. animateScrollToItem
+        // places the *top* of the item at (current top + offset); a NEGATIVE
+        // offset moves the item DOWN from the top. To centre the item, we want
+        // its top placed at -(viewportHeight/2 - approxLineCentre) from the
+        // anchor — i.e. push it down by half the viewport, minus a rough line
+        // half-height so the LINE'S centre (not its top) sits at viewport mid.
+        val viewportPx = with(density) { maxHeight.toPx() }
+        val approxActiveLineHalfPx = with(density) { 32.dp.toPx() } // 34sp ExtraBold ≈ 64dp tall
+        val centerOffset = -((viewportPx / 2f) - approxActiveLineHalfPx).toInt()
 
-    LazyColumn(
-        state = state,
-        modifier = modifier
-            .fillMaxWidth()
-            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-            .drawWithContent {
-                drawContent()
-                // Top + bottom fade so lyrics dissolve into the blurred backdrop
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        0.00f to Color.Transparent,
-                        0.10f to Color.Black,
-                        0.88f to Color.Black,
-                        1.00f to Color.Transparent,
-                    ),
-                    blendMode = BlendMode.DstIn,
+        LaunchedEffect(activeIndex, viewportPx) {
+            if (activeIndex >= 0) {
+                state.animateScrollToItem(
+                    index = activeIndex.coerceAtLeast(0),
+                    scrollOffset = centerOffset,
                 )
-            },
-        contentPadding = PaddingValues(top = 100.dp, bottom = 240.dp),
-        horizontalAlignment = Alignment.Start,
-    ) {
+            }
+        }
+
+        LazyColumn(
+            state = state,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    // Top + bottom fade so lyrics dissolve into the blurred backdrop
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            0.00f to Color.Transparent,
+                            0.10f to Color.Black,
+                            0.88f to Color.Black,
+                            1.00f to Color.Transparent,
+                        ),
+                        blendMode = BlendMode.DstIn,
+                    )
+                },
+            contentPadding = PaddingValues(top = 60.dp, bottom = 240.dp),
+            horizontalAlignment = Alignment.Start,
+        ) {
         itemsIndexed(lines, key = { i, _ -> i }) { i, line ->
             val distance = abs(i - activeIndex)
             val isActive = distance == 0
@@ -161,14 +177,19 @@ fun AppleLyrics(
                         }
                         .then(blurMod)
                         .pressableScale(
-                            onClick  = { onSeek(line.timeMs) },
+                            // In preview mode (onTapAny != null), every line
+                            // tap expands to full lyrics — Apple Music behaviour.
+                            // In full mode (onTapAny == null), per-line taps
+                            // seek to that line's timestamp.
+                            onClick  = { onTapAny?.invoke() ?: onSeek(line.timeMs) },
                             scaleTo  = 0.97f,
                             haptic   = false,
                         ),
                 )
             }
         }
-    }
+    }   // LazyColumn
+    }   // BoxWithConstraints
 }
 
 // ── Instrumental gap dots ─────────────────────────────────────────────────────
