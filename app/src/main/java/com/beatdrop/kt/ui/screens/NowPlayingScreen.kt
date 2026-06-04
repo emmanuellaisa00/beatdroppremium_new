@@ -361,11 +361,14 @@ fun NowPlayingScreen(
                             )
                             // ✅ Improved online music UX: Show fetching state
                             if (pos == 0L && dur == 0L) {
-                                Text(
-                                    "Fetching stream…",
-                                    color = C.accent.copy(alpha = 0.9f),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
+                                // Modern Spotify-style loading indicator
+                                LinearProgressIndicator(
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.6f)
+                                        .height(2.dp)
+                                        .padding(top = 4.dp),
+                                    color = C.accent,
+                                    trackColor = Color.White.copy(alpha = 0.2f),
                                 )
                             }
                         }

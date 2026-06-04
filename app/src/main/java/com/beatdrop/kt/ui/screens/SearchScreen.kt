@@ -258,10 +258,15 @@ fun SearchScreen(vm: PlayerViewModel, onExpandPlayer: () -> Unit = {}) {
                                 result  = r,
                                 isSaved = job?.status == DownloadStatus.COMPLETED,
                                 onPlay  = {
-                                    // Pass the full results list as context so
-                                    // NowPlayingScreen skip-next/prev walks it.
-                                    vm.prepareAndPlayOnline(r, results, idx)
-                                    onExpandPlayer()
+                                    // Smart behavior: if this exact song is already playing, just open Now Playing
+                                    // instead of restarting it. This matches Spotify behavior.
+                                    val current = vm.current.value
+                                    if (current?.sourceVideoId == r.videoId) {
+                                        onExpandPlayer()
+                                    } else {
+                                        vm.prepareAndPlayOnline(r, results, idx)
+                                        onExpandPlayer()
+                                    }
                                 },
                                 onSave  = {
                                     when (job?.status) {
