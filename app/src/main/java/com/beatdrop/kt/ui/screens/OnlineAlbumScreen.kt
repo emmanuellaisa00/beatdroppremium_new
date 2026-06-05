@@ -115,18 +115,22 @@ fun OnlineAlbumScreen(
                         .alpha(0.55f)
                         .then(blurMod),
                 )
-                // Vertical dim gradient so text on top stays legible.
+                // Vertical dim gradient — blends to a CONSTANT deep
+                // midnight indigo regardless of light/dark theme, so the
+                // white foreground text + chrome stays legible in light
+                // mode. Apple Music + Spotify both do this: their album-
+                // detail screen is always cinematic-dark.
                 Box(
                     Modifier.fillMaxSize().background(
                         Brush.verticalGradient(
                             0.0f  to Color.Transparent,
-                            0.45f to C.bg0.copy(alpha = 0.72f),
-                            1.0f  to C.bg0,
+                            0.45f to Color(0xCC0E0A1F),
+                            1.0f  to Color(0xFF0E0A1F),
                         ),
                     ),
                 )
             } else {
-                Box(Modifier.fillMaxSize().background(C.bg0))
+                Box(Modifier.fillMaxSize().background(Color(0xFF0E0A1F)))
             }
 
             // ── Foreground content ───────────────────────────────────────

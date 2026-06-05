@@ -446,6 +446,7 @@ fun MainScaffold(vm: PlayerViewModel) {
                             onOpenBrowser       = { push(Dest.Browser) },
                             onOpenStorage       = { push(Dest.Storage) },
                             onOpenPrivateFolder = { push(Dest.PrivateFolder) },
+                            onOpenOnlineAlbum   = { push(Dest.OnlineAlbum(it)) },
                         )
                         is Dest.Album        -> AlbumScreen(vm, dest.name, dest.artist, onBack = { pop() })
                         is Dest.Artist       -> ArtistScreen(vm, dest.name, onBack = { pop() })
@@ -517,6 +518,7 @@ private fun TabsHost(
     onOpenEq: () -> Unit, onOpenDebug: () -> Unit,
     onOpenDownloads: () -> Unit, onOpenTrending: () -> Unit,
     onOpenBrowser: () -> Unit, onOpenStorage: () -> Unit, onOpenPrivateFolder: () -> Unit,
+    onOpenOnlineAlbum: (com.beatdrop.kt.youtube.OnlineAlbum) -> Unit,
 ) {
     val C = LocalAppColors.current
     Box(Modifier.fillMaxSize().background(Color.Transparent)) {
@@ -529,8 +531,11 @@ private fun TabsHost(
                     "search"   -> SearchScreen(
                         vm,
                         onExpandPlayer = onExpandPlayer,
-                        // Bottom tab → hybrid (local library + YT catalog).
+                        // Bottom tab → hybrid (local library + BeatDrop catalogue).
                         mode = com.beatdrop.kt.ui.screens.SearchMode.HYBRID,
+                        // BUG FIX: previously omitted, so album taps from
+                        // the bottom-tab search were silent no-ops.
+                        onOpenOnlineAlbum = onOpenOnlineAlbum,
                     )
                     "radio"    -> RadioScreen(vm)
                     "settings" -> SettingsScreen(vm, onBack = {}, onOpenEq = onOpenEq, onOpenDebug = onOpenDebug)
