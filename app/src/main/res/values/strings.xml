@@ -53,4 +53,8 @@
     <string name="terms_subtitle">Privacy &amp; Terms · 30-second read</string>
     <string name="terms_read_more">Read full policy ↓</string>
     <string name="terms_read_less">Show less ↑</string>
+
+    <!-- Language picker -->
+    <string name="settings_language">Language</string>
+    <string name="language_system_default">Follow system</string>
 </resources>

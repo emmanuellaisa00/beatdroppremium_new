@@ -78,6 +78,38 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit, onOpenEq: () -> Unit
                         GlassChip(t.replaceFirstChar { it.uppercase() }, theme == t, icon) { vm.setTheme(t) }
                     }
                 }
+                GlassDivider()
+                // Language picker — empty string '' = follow system locale.
+                // Tags match our values-XX/strings.xml folders. Selecting a
+                // language calls AppCompatDelegate.setApplicationLocales,
+                // which recreates the activity with the new locale so the
+                // whole UI re-resolves stringResource() against the new
+                // values-XX file.
+                Text(
+                    androidx.compose.ui.res.stringResource(com.beatdrop.kt.R.string.settings_language),
+                    color = C.text, fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(12.dp))
+                val currentLang by vm.language.collectAsState()
+                val languages = listOf(
+                    "" to androidx.compose.ui.res.stringResource(com.beatdrop.kt.R.string.language_system_default),
+                    "en" to "English",
+                    "sw" to "Kiswahili",
+                    "fr" to "Français",
+                    "es" to "Español",
+                    "pt" to "Português",
+                    "ar" to "العربية",
+                    "de" to "Deutsch",
+                    "hi" to "हिन्दी",
+                )
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    languages.forEach { (tag, label) ->
+                        GlassChip(label, currentLang == tag, null) { vm.setLanguage(tag) }
+                    }
+                }
             }
         }
 

@@ -163,6 +163,24 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { prefs.setTermsAcceptedVersion(versionCode) }
     }
 
+    // ── User-selected app language ──────────────────────────────────────
+    private val _language = MutableStateFlow("")
+    val language: StateFlow<String> = _language.asStateFlow()
+    fun setLanguage(tag: String) {
+        _language.value = tag
+        viewModelScope.launch { prefs.setLanguage(tag) }
+        // Apply at runtime. AppCompatDelegate.setApplicationLocales
+        // re-creates the activity stack with the new locale, so the
+        // entire UI re-resolves stringResource() against the chosen
+        // values-XX/strings.xml.
+        val locales = if (tag.isBlank()) {
+            androidx.core.os.LocaleListCompat.getEmptyLocaleList()
+        } else {
+            androidx.core.os.LocaleListCompat.forLanguageTags(tag)
+        }
+        androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(locales)
+    }
+
     // ── Resolver backend (optional self-hosted yt-dlp proxy) ─────────────────
     private val _resolverBackend = MutableStateFlow("")
     val resolverBackend: StateFlow<String> = _resolverBackend.asStateFlow()
@@ -437,6 +455,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             // an enum) by falling back to the RECENT default.
             _sort.value = runCatching { SortMode.valueOf(name) }.getOrDefault(SortMode.RECENT)
         }.launchIn(viewModelScope)
+        prefs.languageFlow.onEach { _language.value = it }.launchIn(viewModelScope)
         prefs.themeFlow.onEach { _theme.value = it }.launchIn(viewModelScope)
         prefs.defaultShuffleFlow.onEach { _defaultShuffle.value = it }.launchIn(viewModelScope)
         prefs.autoDjFlow.onEach { _autoDjEnabled.value = it }.launchIn(viewModelScope)

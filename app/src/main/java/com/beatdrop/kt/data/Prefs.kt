@@ -46,6 +46,9 @@ class Prefs(private val context: Context) {
         val TERMS_ACCEPTED_VERSION = intPreferencesKey("terms_accepted_version")
         /** Library sort mode (enum name string). Default = RECENT. */
         val LIBRARY_SORT = stringPreferencesKey("library_sort")
+        /** User-selected app language. BCP-47 tag ('en', 'sw', 'fr', …)
+         *  or empty string for 'follow system'. */
+        val LANGUAGE = stringPreferencesKey("language")
     }
 
     // ── liked ──
@@ -119,6 +122,18 @@ class Prefs(private val context: Context) {
     }
     suspend fun setLibrarySort(name: String) {
         context.dataStore.edit { it[Keys.LIBRARY_SORT] = name }
+    }
+
+    // ── User-selected app language ──
+    // Empty string = follow system locale (default). Otherwise a BCP-47
+    // tag matching one of our values-XX/strings.xml folders: 'sw', 'fr',
+    // 'es', 'pt', 'ar', 'de', 'hi'. SettingsScreen exposes this; the
+    // Application apply happens via AppCompatDelegate.setApplicationLocales
+    // which Android persists itself, but we keep our own copy in prefs
+    // so the picker stays in sync with the actual active locale.
+    val languageFlow: Flow<String> = context.dataStore.data.map { it[Keys.LANGUAGE] ?: "" }
+    suspend fun setLanguage(tag: String) {
+        context.dataStore.edit { it[Keys.LANGUAGE] = tag }
     }
 
     // Optional self-hosted resolver backend URL (Cloudflare Worker / Render etc.)

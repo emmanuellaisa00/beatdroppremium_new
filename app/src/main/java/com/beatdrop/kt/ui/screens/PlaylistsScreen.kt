@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.beatdrop.kt.ui.components.Ic
 import com.beatdrop.kt.PlayerViewModel
 import com.beatdrop.kt.ui.components.GlassHeader
@@ -161,6 +162,7 @@ fun PlaylistDetailScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit) 
                     Row(
                         Modifier.padding(top = 4.dp, bottom = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         TintedGlassButton(modifier = Modifier.height(48.dp).width(140.dp)) {
                             Row(
@@ -173,6 +175,33 @@ fun PlaylistDetailScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit) 
                                 Icon(Ic.Play, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text("Play", color = androidx.compose.ui.graphics.Color.White, style = Type.headline)
+                            }
+                        }
+                        // Downloaded-status badge — green check pill when
+                        // every track in this playlist exists on the
+                        // device (any track with a non-null `data` path is
+                        // on-device). User asked: 'when you save song it
+                        // is supposed to save it to libraries and never
+                        // loose it next time entering — playing all should
+                        // have a tick on download.'
+                        val allOnDevice = remember(tracks) {
+                            tracks.isNotEmpty() && tracks.all { !it.data.isNullOrBlank() }
+                        }
+                        if (allOnDevice) {
+                            Row(
+                                Modifier
+                                    .height(48.dp)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .background(C.accent.copy(alpha = 0.18f))
+                                    .padding(horizontal = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Ic.Check, "All downloaded",
+                                    tint = C.accent, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("All saved", color = C.accent,
+                                    fontSize = 13.sp,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                             }
                         }
                     }

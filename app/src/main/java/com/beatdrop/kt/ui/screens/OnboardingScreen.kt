@@ -26,17 +26,22 @@ import com.beatdrop.kt.ui.theme.Radius
 @Composable
 fun OnboardingScreen(onGetStarted: () -> Unit) {
     val C = LocalAppColors.current
+    // Same indigo backdrop as the SplashScreen + system splash so the
+    // user lands here in a colour space they've already been seeing for
+    // ~700 ms. Replaces the previous purple/pink palette which clashed
+    // with the new Ocean-Teal accent + Cascade-Drop logo identity.
+    val bgStops = if (C.isDark) listOf(
+        Color(0xFF1A1230),   // top — matches logo gradient violet
+        Color(0xFF0E0A1F),   // mid — matches splash
+        Color(0xFF06040E),   // bottom — deepest
+    ) else listOf(
+        Color(0xFFE8F4FB),   // top — pale teal wash
+        Color(0xFFF5F8FA),   // mid
+        Color(0xFFFAFAFD),   // bottom — near white
+    )
     Box(
         Modifier.fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        if (C.isDark) Color(0xFF1B1026) else Color(0xFFFFEEF5),
-                        if (C.isDark) Color(0xFF101018) else Color(0xFFE8F2FF),
-                        if (C.isDark) Color(0xFF0A0910) else Color(0xFFFAFAFD),
-                    )
-                )
-            )
+            .background(Brush.verticalGradient(bgStops))
     ) {
         Column(
             Modifier.fillMaxSize()
@@ -119,14 +124,13 @@ fun OnboardingScreen(onGetStarted: () -> Unit) {
                     .shadow(
                         elevation = 12.dp,
                         shape = RoundedCornerShape(16.dp),
-                        ambientColor = Color(0xFF7B2CBF).copy(alpha = 0.4f),
-                        spotColor = Color(0xFFC77DFF).copy(alpha = 0.3f)
+                        ambientColor = C.accent.copy(alpha = 0.4f),
+                        spotColor = C.accent.copy(alpha = 0.3f),
                     )
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(Color(0xFFC77DFF), Color(0xFF9D4EDD))
-                        )
-                    )
+                    // CTA matches the in-app accent (Ocean Teal) so the
+                    // first thing the user taps uses the same colour as
+                    // every other 'primary action' in the app.
+                    .background(C.accent)
                     .border(0.8.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
                     .pressableScale(onClick = onGetStarted, haptic = false)
                     .padding(vertical = 18.dp),
@@ -134,7 +138,7 @@ fun OnboardingScreen(onGetStarted: () -> Unit) {
             ) {
                 Text(
                     "Get Started",
-                    color = Color.White,
+                    color = Color.Black,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
                     letterSpacing = 0.5.sp

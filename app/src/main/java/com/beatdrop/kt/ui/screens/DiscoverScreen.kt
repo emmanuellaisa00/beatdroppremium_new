@@ -54,24 +54,29 @@ import com.beatdrop.kt.youtube.OnlineResult
 // Accent: #21FF6B (Spotify Green), glass cards blur 24-32px
 // ═══════════════════════════════════════════════════════════════════════════════
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun DiscoverScreen(vm: PlayerViewModel, onOpenSearch: () -> Unit = {}, onExpandPlayer: () -> Unit = {}) {
     val C = LocalAppColors.current
     var trending  by remember { mutableStateOf<List<OnlineResult>>(emptyList()) }
     var popHits   by remember { mutableStateOf<List<OnlineResult>>(emptyList()) }
     var hiphopHits by remember { mutableStateOf<List<OnlineResult>>(emptyList()) }
-    var loading   by remember { mutableStateOf(true) }
-
-    LaunchedEffect(Unit) {
-        vm.getDiscoverData()
-        vm.loadMadeForYou()
-    }
-
     val cachedTrending  by vm.cachedTrending.collectAsState()
     val cachedPopHits   by vm.cachedPopHits.collectAsState()
     val cachedHiphop    by vm.cachedHiphop.collectAsState()
     val discoverLoading by vm.discoverLoading.collectAsState()
     val madeForYou      by vm.madeForYou.collectAsState()
+
+    // Skeletons appear ONLY on the very first launch (no on-device cache).
+    // Subsequent app opens hydrate cachedTrending from DataStore in
+    // PlayerViewModel.init → loadDiscoverCache(), so by the time
+    // DiscoverScreen composes we already have data.
+    var loading   by remember { mutableStateOf(cachedTrending.isEmpty()) }
+
+    LaunchedEffect(Unit) {
+        vm.getDiscoverData()
+        vm.loadMadeForYou()
+    }
 
     // Show cached data instantly, update when fresh data arrives
     LaunchedEffect(cachedTrending, cachedPopHits, cachedHiphop) {
@@ -86,7 +91,20 @@ fun DiscoverScreen(vm: PlayerViewModel, onOpenSearch: () -> Unit = {}, onExpandP
     }
 
     val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    // Pull-to-refresh — drag down from the top to force a fresh fetch.
+    // discoverLoading flips the spinner; vm.getDiscoverData(forceRefresh
+    // = true) bypasses the 5-min cache window.
+    val pullState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
     ScreenScaffold {
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = discoverLoading,
+        onRefresh = {
+            vm.getDiscoverData(forceRefresh = true)
+            vm.loadMadeForYou(force = true)
+        },
+        state = pullState,
+        modifier = Modifier.fillMaxSize(),
+    ) {
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = topPadding + 10.dp, bottom = 170.dp),
@@ -199,7 +217,8 @@ fun DiscoverScreen(vm: PlayerViewModel, onOpenSearch: () -> Unit = {}, onExpandP
             }
         }
     }
-    }
+    }   // PullToRefreshBox
+    }   // ScreenScaffold
 }
 
 @Composable private fun OnlineEyebrow(text: String) {
