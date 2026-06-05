@@ -86,6 +86,6 @@ object DebugLog {
         return "$host$path…<redacted:${url.length} chars>"
     }
 
-    private val URL_RE = Regex("https?://[^\s)\]\}\"']+")
-    private val TOKEN_RE = Regex("(?i)(sig|signature|lsig|token|key|cookie|authorization|po[_-]?token|params)=([^\s&]+)")
+    private val URL_RE = Regex("""https?://[^\s)\]\}"']+""")
+    private val TOKEN_RE = Regex("""(?i)(sig|signature|lsig|token|key|cookie|authorization|po[_-]?token|params)=([^\s&]+)""")
 }
