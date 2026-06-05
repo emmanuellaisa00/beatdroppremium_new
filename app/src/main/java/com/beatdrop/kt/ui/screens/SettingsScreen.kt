@@ -44,6 +44,8 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit, onOpenEq: () -> Unit
     val resolverBackend by vm.resolverBackend.collectAsState()
     val streamQuality by vm.streamQuality.collectAsState()
     val musicSearch by vm.musicSearchEnabled.collectAsState()
+    val dataSaver by vm.dataSaver.collectAsState()
+    val allowVideoFallback by vm.allowVideoFallback.collectAsState()
     val sleepLeft by vm.sleepMinutesLeft.collectAsState()
     val tracks by vm.tracks.collectAsState()
     val liked by vm.liked.collectAsState()
@@ -160,6 +162,18 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit, onOpenEq: () -> Unit
                     if (musicSearch)
                         "Searches YouTube Music — clean song results, no reaction videos or lyric channels."
                     else "Searches all of YouTube — useful for podcasts, interviews, live sets.",
+                    color = C.textTertiary, fontSize = 12.sp,
+                )
+                GlassDivider()
+                ToggleRow("Data Saver", Ic.Network, dataSaver) { vm.setDataSaver(it) }
+                Text(
+                    "Reduces mobile data: disables stream prefetch on cellular and caps audio around 96 kbps.",
+                    color = C.textTertiary, fontSize = 12.sp,
+                )
+                GlassDivider()
+                ToggleRow("Allow video fallback", Ic.Video, allowVideoFallback) { vm.setAllowVideoFallback(it) }
+                Text(
+                    "Off by default. Keeps playback audio-only when possible; enabling can fix stubborn tracks but may use much more data.",
                     color = C.textTertiary, fontSize = 12.sp,
                 )
                 GlassDivider()

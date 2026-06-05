@@ -683,10 +683,12 @@ suspend fun getStream(videoId: String): ResolvedStream = withContext(Dispatchers
             var pickedKind = "audio"
             var url = resolveBestAudio(streamingData.optJSONArray("adaptiveFormats"))
                 ?: resolveBestAudio(streamingData.optJSONArray("formats"))
-            if (url.isNullOrBlank()) {
+            if (url.isNullOrBlank() && QualityPreference.allowVideoFallback) {
                 url = resolveBestMuxed(streamingData.optJSONArray("formats"))
                     ?: resolveBestMuxed(streamingData.optJSONArray("adaptiveFormats"))
                 if (!url.isNullOrBlank()) pickedKind = "muxed"
+            } else if (url.isNullOrBlank()) {
+                com.beatdrop.kt.DebugLog.w("resolve", "${client.name}: audio-only failed; muxed fallback disabled")
             }
             if (!url.isNullOrBlank()) {
                 val ua = client.headers["User-Agent"] ?: IOS_UA

@@ -28,6 +28,8 @@ class Prefs(private val context: Context) {
         val RESOLVER_BACKEND_URL = stringPreferencesKey("resolver_backend_url")
         val STREAM_QUALITY = stringPreferencesKey("stream_quality") // "auto" | "high" | "medium" | "low"
         val MUSIC_SEARCH_ENABLED = booleanPreferencesKey("music_search_enabled")
+        val DATA_SAVER = booleanPreferencesKey("data_saver")
+        val ALLOW_VIDEO_FALLBACK = booleanPreferencesKey("allow_video_fallback")
         val SEARCH_HISTORY = stringPreferencesKey("search_history")
         // Cached on-device audio features: JSON {trackId: {"bpm":128,"key":"8A"}}
         val TRACK_FEATURES = stringPreferencesKey("track_features")
@@ -155,6 +157,12 @@ class Prefs(private val context: Context) {
     suspend fun setMusicSearchEnabled(v: Boolean) {
         context.dataStore.edit { it[Keys.MUSIC_SEARCH_ENABLED] = v }
     }
+
+    val dataSaverFlow: Flow<Boolean> = context.dataStore.data.map { it[Keys.DATA_SAVER] ?: false }
+    suspend fun setDataSaver(v: Boolean) { context.dataStore.edit { it[Keys.DATA_SAVER] = v } }
+
+    val allowVideoFallbackFlow: Flow<Boolean> = context.dataStore.data.map { it[Keys.ALLOW_VIDEO_FALLBACK] ?: false }
+    suspend fun setAllowVideoFallback(v: Boolean) { context.dataStore.edit { it[Keys.ALLOW_VIDEO_FALLBACK] = v } }
 
     // ── Cached per-track audio features (BPM + Camelot key) ────────────────────
     // Stored as JSON {trackId: {"bpm":<int>, "key":"<camelot>"}}. Analyzed once

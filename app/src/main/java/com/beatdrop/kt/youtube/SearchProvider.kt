@@ -117,12 +117,15 @@ fun applySearchFilter(results: List<OnlineResult>, filter: SearchFilter): List<O
  */
 object QualityPreference {
     @Volatile var preferred: String = "auto"
+    @Volatile var dataSaver: Boolean = false
+    @Volatile var allowVideoFallback: Boolean = false
 
     /** Returns max bitrate in bps for the current preference; 0 = unlimited. */
-    fun maxBitrate(): Long = when (preferred) {
-        "high"   -> 256_000L
-        "medium" -> 128_000L
-        "low"    -> 64_000L
-        else     -> 0L            // "auto" — no cap
+    fun maxBitrate(): Long = when {
+        dataSaver -> 96_000L
+        preferred == "high"   -> 256_000L
+        preferred == "medium" -> 128_000L
+        preferred == "low"    -> 64_000L
+        else -> 0L            // "auto" — no cap
     }
 }

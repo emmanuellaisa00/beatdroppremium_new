@@ -209,6 +209,22 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { prefs.setMusicSearchEnabled(v) }
     }
 
+    private val _dataSaver = MutableStateFlow(false)
+    val dataSaver: StateFlow<Boolean> = _dataSaver.asStateFlow()
+    fun setDataSaver(v: Boolean) {
+        _dataSaver.value = v
+        com.beatdrop.kt.youtube.QualityPreference.dataSaver = v
+        viewModelScope.launch { prefs.setDataSaver(v) }
+    }
+
+    private val _allowVideoFallback = MutableStateFlow(false)
+    val allowVideoFallback: StateFlow<Boolean> = _allowVideoFallback.asStateFlow()
+    fun setAllowVideoFallback(v: Boolean) {
+        _allowVideoFallback.value = v
+        com.beatdrop.kt.youtube.QualityPreference.allowVideoFallback = v
+        viewModelScope.launch { prefs.setAllowVideoFallback(v) }
+    }
+
     // ── Auto-DJ runtime state ────────────────────────────────────────────────
     @Volatile private var isCrossfading = false
     private var autoMixSequence = 0L  // monotonic — guards against stale finally blocks
@@ -493,6 +509,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         prefs.musicSearchEnabledFlow.onEach {
             _musicSearchEnabled.value = it
             com.beatdrop.kt.youtube.OnlineSearch.musicMode = it
+        }.launchIn(viewModelScope)
+        prefs.dataSaverFlow.onEach {
+            _dataSaver.value = it
+            com.beatdrop.kt.youtube.QualityPreference.dataSaver = it
+        }.launchIn(viewModelScope)
+        prefs.allowVideoFallbackFlow.onEach {
+            _allowVideoFallback.value = it
+            com.beatdrop.kt.youtube.QualityPreference.allowVideoFallback = it
         }.launchIn(viewModelScope)
         prefs.trackFeaturesFlow.onEach { _trackFeatures.value = it }.launchIn(viewModelScope)
         prefs.searchHistoryFlow.onEach { _searchHistory.value = it }.launchIn(viewModelScope)
@@ -2100,6 +2124,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     )
     fun prefetchOnlineUrl(videoId: String) {
         if (videoId.isBlank()) return
+        if (_dataSaver.value) return
+        if (com.beatdrop.kt.util.NetworkMonitor.isOnMobileData(getApplication())) return
         if (!prefetchedVisibleIds.add(videoId)) return
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { com.beatdrop.kt.youtube.getStream(videoId) }
