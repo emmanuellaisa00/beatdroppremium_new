@@ -81,7 +81,9 @@ class Prefs(private val context: Context) {
     val themeFlow: Flow<String> = context.dataStore.data.map { it[Keys.THEME] ?: "dark" }
     suspend fun setTheme(v: String) { context.dataStore.edit { it[Keys.THEME] = v } }
 
-    val hapticsFlow: Flow<Boolean> = context.dataStore.data.map { it[Keys.HAPTICS] ?: false }
+    // Default ON — Spotify-snappy feel out of the box. Users who don't
+    // want haptic feedback can toggle off in Settings → Haptics.
+    val hapticsFlow: Flow<Boolean> = context.dataStore.data.map { it[Keys.HAPTICS] ?: true }
     suspend fun setHaptics(v: Boolean) { context.dataStore.edit { it[Keys.HAPTICS] = v } }
 
     val defaultShuffleFlow: Flow<Boolean> = context.dataStore.data.map { it[Keys.DEFAULT_SHUFFLE] ?: false }

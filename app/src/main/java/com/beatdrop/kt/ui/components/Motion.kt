@@ -33,7 +33,13 @@ fun Modifier.pressableScale(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     scaleTo: Float = 0.97f,
-    haptic: Boolean = false,
+    /**
+     * Whether this pressable fires a tap-haptic. Default TRUE so the app
+     * feels Spotify-snappy out of the box. The effective haptic still
+     * AND-s with LocalHapticsEnabled (Settings → Haptics), so users who
+     * disabled feedback in settings get silence regardless of this flag.
+     */
+    haptic: Boolean = true,
     enableGlow: Boolean = true,
 ): Modifier {
     val interaction = remember { MutableInteractionSource() }
@@ -50,6 +56,7 @@ fun Modifier.pressableScale(
         label = "pressGlow",
     )
     val view = LocalView.current
+    val hapticsEnabled = com.beatdrop.kt.ui.components.LocalHapticsEnabled.current
     return this
         .scale(scale)
         .then(
@@ -77,12 +84,16 @@ fun Modifier.pressableScale(
             interactionSource = interaction,
             indication = null,
             onClick = {
-                if (haptic) view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                if (haptic && hapticsEnabled) {
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                }
                 onClick()
             },
             onLongClick = onLongClick?.let {
                 {
-                    view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                    if (hapticsEnabled) {
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                    }
                     it()
                 }
             },

@@ -321,7 +321,11 @@ fun MainScaffold(vm: PlayerViewModel) {
     }
 
     val tilt = com.beatdrop.kt.ui.components.rememberDeviceTilt()
+    val hapticsOn by vm.haptics.collectAsState()
 
+    androidx.compose.runtime.CompositionLocalProvider(
+        com.beatdrop.kt.ui.components.LocalHapticsEnabled provides hapticsOn,
+    ) {
     Surface(Modifier.fillMaxSize(), color = Color.Transparent) {
         Box(Modifier.fillMaxSize()) {
             // ── Global blurred artwork background ────────────────────────────
@@ -477,6 +481,7 @@ fun MainScaffold(vm: PlayerViewModel) {
             }
         }
     }
+    } // CompositionLocalProvider(LocalHapticsEnabled)
 }
 
 @Composable

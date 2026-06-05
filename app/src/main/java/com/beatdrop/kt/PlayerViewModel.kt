@@ -117,7 +117,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     val playCounts: StateFlow<Map<String, Int>> = _playCounts.asStateFlow()
 
     // ── Settings ──────────────────────────────────────────────────────────────
-    private val _haptics = MutableStateFlow(false)
+    private val _haptics = MutableStateFlow(true)
     val haptics: StateFlow<Boolean> = _haptics.asStateFlow()
     fun setHaptics(v: Boolean) { _haptics.value = v; viewModelScope.launch { prefs.setHaptics(v) } }
 
