@@ -1,0 +1,110 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    BeatDrop — Apple-Music-style master logo.
+
+    Design language rules (Apple Music DNA):
+      1. The gradient IS the icon. No separate dark container.
+      2. A single white silhouette sits on the gradient.
+      3. No drop shadows, no ornament, no decorative dots.
+      4. Gradient runs diagonally top-left → bottom-right.
+      5. iOS super-ellipse (squircle) container, not a pure rounded-rect.
+
+    BeatDrop's identity vs. Apple Music's red-pink:
+      • Electric VIOLET (top-left) → CORAL → GOLD diagonal — sits in
+        the warm/saturated 'premium music' visual family but the
+        violet endpoint is unambiguously different from Apple Music's
+        pink, Spotify's green, YouTube Music's red, SoundCloud's
+        orange. Owns a colour territory.
+      • Hero silhouette = teardrop (the brand name) with a circular
+        play button cut OUT of its belly as negative space.
+
+    Polish vs. the previous draft (build-146):
+      • Squircle math tightened — corner curve is gentler so the
+        container reads more clearly as an iOS app icon, not as a
+        bowed pillow.
+      • Play circle scaled up 15% (radius 58 → 68) so the triangle
+        inside survives at 24 dp launcher size.
+      • Magenta endpoint shifted to electric violet (#9D4EDD).
+  -->
+  <defs>
+    <!-- Hero gradient: electric violet (top-left) → coral mid → warm gold
+         (bottom-right). Three stops so the transition has depth without
+         crossing into Apple Music's pink-red territory. -->
+    <linearGradient id="hero" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#9D4EDD"/>
+      <stop offset="45%"  stop-color="#FF5A6B"/>
+      <stop offset="100%" stop-color="#FFB347"/>
+    </linearGradient>
+
+    <!-- Subtle inner sheen on the white drop — pure-white core with a
+         soft pearlescent rim. Lifts it off the gradient without
+         introducing a separate colour. -->
+    <radialGradient id="dropSheen" cx="0.4" cy="0.3" r="0.7">
+      <stop offset="0%"   stop-color="#FFFFFF"/>
+      <stop offset="70%"  stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#FFEAF0"/>
+    </radialGradient>
+
+    <!--
+      Teardrop silhouette. Sharp pointed apex at the top, perfectly
+      symmetric, wide rounded belly at the bottom. Four symmetric
+      bezier curves so left = mirrored right.
+
+         (256, 96)            ← sharp apex
+            *
+           / \
+          /   \
+         |     |
+         |     |
+         |     |
+          \   /
+           \ /
+            *                  ← rounded bottom (256, 416)
+    -->
+    <path id="dropShape"
+      d="M 256 96
+         C 256 96 156 220 156 296
+         C 156 362 200 416 256 416
+         C 312 416 356 362 356 296
+         C 356 220 256 96 256 96 Z"/>
+
+    <!--
+      iOS super-ellipse container ('squircle'). Tightened from the
+      previous version — corner curve is now gentler (control points
+      pulled back 16px on each side) so the container reads as a
+      proper iOS app icon rather than a bowed pillow.
+    -->
+    <path id="squircle"
+      d="M 0 256
+         C 0 80  80 0  256 0
+         C 432 0  512 80  512 256
+         C 512 432 432 512 256 512
+         C 80 512  0 432  0 256 Z"/>
+  </defs>
+
+  <!-- The gradient fills the entire squircle container -->
+  <use href="#squircle" fill="url(#hero)"/>
+
+  <!-- The white teardrop sits on top -->
+  <use href="#dropShape" fill="url(#dropSheen)"/>
+
+  <!-- Negative-space play button: a perfect circle cut out of the drop's
+       belly, filled with the SAME gradient so it reads as a window
+       through the drop. Radius 68 (up from 58) so the triangle inside
+       survives at 24 dp launcher size. Centred slightly above the
+       drop's geometric centre because triangles read as bottom-heavy. -->
+  <circle cx="256" cy="282" r="68" fill="url(#hero)"/>
+
+  <!-- Play triangle in pure white. Slightly larger to match the bigger
+       play circle. Optically centred (shifted 4px right because
+       triangles' optical centre is right of their geometric centre). -->
+  <path
+    d="M 238 246
+       L 296 280
+       C 304 284 304 292 296 296
+       L 238 330
+       C 230 334 220 330 220 322
+       L 220 254
+       C 220 246 230 242 238 246 Z"
+    fill="#FFFFFF"/>
+</svg>

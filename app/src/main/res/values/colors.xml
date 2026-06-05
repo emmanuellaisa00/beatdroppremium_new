@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#7B2CBF</color>
+    <!--
+      Adaptive-icon background colour. Matches the gradient midpoint of
+      the master logo (coral #FF5A6B) so when a launcher masks the icon
+      to circle / squircle / teardrop it always shows a consistent
+      colour around the white drop. We use a solid colour here (not a
+      gradient drawable) so the icon paints in one pass on all
+      launchers, including older ones that don't honour vector
+      drawables for the background layer.
+
+      The full diagonal gradient (#9D4EDD → #FF5A6B → #FFB347) only
+      appears in the static mipmap-XXX/ic_launcher.png variants that
+      pre-Android-8 launchers fall back to. Adaptive launchers see the
+      flat coral background + white drop foreground, which is still
+      brand-recognisable.
+    -->
+    <color name="ic_launcher_background">#FF5A6B</color>
 </resources>

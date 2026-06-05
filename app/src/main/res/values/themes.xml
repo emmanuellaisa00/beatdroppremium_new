@@ -4,22 +4,25 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <!--
-          Splash colour matches the MIDDLE of the in-app Laisacorp splash
-          gradient (#1A1020 → #151025 → #12121A) so the handover from
-          system splash → SplashScreen.kt is visually seamless: same logo,
-          same colour family, no jarring background swap. On Android 12+
-          the system splash is unavoidable, so the next best thing is to
-          make it indistinguishable from the branded splash that follows.
+          Splash background. Matches the in-app SplashScreen.kt exactly
+          so the Android-12+ system splash → branded Compose splash
+          handover is a single continuous colour, no jarring swap.
+
+          We use a deep midnight indigo (#0E0A1F) chosen specifically
+          to complement the new gold/violet/coral logo gradient — the
+          warm logo glows against the cool indigo. Was previously
+          #151025 (purple-leaning); shifted slightly bluer so the
+          coral and gold endpoints of the logo gradient have maximum
+          chromatic separation from the backdrop.
         -->
-        <item name="android:windowBackground">#151025</item>
-        <item name="android:windowSplashScreenBackground" tools:targetApi="s">#151025</item>
+        <item name="android:windowBackground">#0E0A1F</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="s">#0E0A1F</item>
         <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="s">@drawable/beatdrop_logo</item>
         <!--
           Suppress the icon-background ring on Android 12L+ so the logo
-          appears flat against the splash background, exactly like it
-          does in SplashScreen.kt. Without this the system would draw a
-          subtle white circle behind the logo on some OEMs.
+          appears flat against the splash background, identical to how
+          it renders in SplashScreen.kt.
         -->
-        <item name="android:windowSplashScreenIconBackgroundColor" tools:targetApi="v">#151025</item>
+        <item name="android:windowSplashScreenIconBackgroundColor" tools:targetApi="v">#0E0A1F</item>
     </style>
 </resources>

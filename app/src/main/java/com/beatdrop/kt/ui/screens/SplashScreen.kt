@@ -60,11 +60,14 @@ fun SplashScreen(onDone: () -> Unit) {
         Modifier
             .fillMaxSize()
             .pressableScale(onClick = { onDone() })
-            // Flat #151025 — exact match to themes.xml
-            // windowSplashScreenBackground. The Android-12+ system splash
-            // dissolves into this Compose splash with zero visible colour
-            // change: same logo, same background, no double-splash effect.
-            .background(Color(0xFF151025)),
+            // Flat #0E0A1F — exact match to themes.xml
+            // windowSplashScreenBackground. Updated alongside the new
+            // 'Cascade Drop' app icon: deep midnight indigo gives
+            // maximum chromatic separation from the icon's warm
+            // violet/coral/gold gradient so the logo glows on the
+            // backdrop. System splash → branded Compose splash → app
+            // is one continuous colour, zero visible swap.
+            .background(Color(0xFF0E0A1F)),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android-13+ themed icon. Single-colour silhouette — the system applies
+  the user's dynamic-colour tint at runtime. We use the same teardrop +
+  cut-out play button geometry as the colour foreground, scaled to fit
+  the 108-unit adaptive-icon canvas. Anything outside the inner 72×72
+  safe area will be cropped by the launcher mask.
+
+  All shapes are #FFFFFF here because the system replaces this colour
+  with the user-themed tint; we just need the silhouette to be opaque.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Drop body (white, will be themed by system) -->
+    <path
+        android:pathData="M54,21 C54,21 31,49 31,66 C31,80.5 41,93 54,93 C67,93 77,80.5 77,66 C77,49 54,21 54,21 Z"
+        android:fillColor="#FFFFFF"/>
+    <!-- Negative-space play circle: punch out by re-painting with the
+         themed background colour. Android system handles this for mono
+         layers by treating any non-white pixel as transparent inside
+         the masked area — easiest is to leave the cutout as a separate
+         transparent path below using fillType evenOdd.
+         Simpler: use a single combined path with evenOdd. -->
+    <path
+        android:pathData="M54,21 C54,21 31,49 31,66 C31,80.5 41,93 54,93 C67,93 77,80.5 77,66 C77,49 54,21 54,21 Z
+                          M54,55 m-14.5,0 a14.5,14.5 0 1,0 29,0 a14.5,14.5 0 1,0 -29,0 Z"
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"/>
+    <!-- Play triangle inside the cutout — small enough to read
+         distinctly even at launcher density. -->
+    <path
+        android:pathData="M50,49 L62.5,57 C64.3,58 64.3,59.8 62.5,60.8 L50,68.8 C48.2,69.8 46,68.8 46,66.7 L46,51.3 C46,49.2 48.2,48 50,49 Z"
+        android:fillColor="#FFFFFF"/>
+</vector>
