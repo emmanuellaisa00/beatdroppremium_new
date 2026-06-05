@@ -290,9 +290,24 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
             // ── Primary path: playlist returned tracks ─────────────────────
             if (filtered.isNotEmpty()) {
-                val startIdx = if (startFromTrackId != null) {
-                    filtered.indexOfFirst { it.videoId == startFromTrackId }.coerceAtLeast(0)
-                } else 0
+                // Smart-context adoption (Mode B): if the user tapped the
+                // playlist/album generally (no specific start track) AND the
+                // currently-playing song is somewhere inside this playlist,
+                // prefer to start from THAT position rather than from index 0.
+                // Combined with the same-track guard inside
+                // prepareAndPlayOnline this means: tapping an album whose
+                // first track is what you're already playing won't restart
+                // it; tapping an album you're in the middle of won't jump
+                // you back to track 1 — the playlist just becomes your new
+                // queue and you keep listening.
+                val currentVideoId = _current.value?.sourceVideoId
+                val startIdx = when {
+                    startFromTrackId != null ->
+                        filtered.indexOfFirst { it.videoId == startFromTrackId }.coerceAtLeast(0)
+                    currentVideoId != null && filtered.any { it.videoId == currentVideoId } ->
+                        filtered.indexOfFirst { it.videoId == currentVideoId }
+                    else -> 0
+                }
                 withContext(Dispatchers.Main) {
                     prepareAndPlayOnline(filtered[startIdx], filtered, startIdx)
                 }
@@ -1550,6 +1565,32 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         context: List<OnlineResult> = listOf(result),
         contextIndex: Int = context.indexOfFirst { it.videoId == result.videoId }.coerceAtLeast(0),
     ) {
+        // ── Same-track guard (Mode B) ───────────────────────────────────────
+        // If the user taps a result whose videoId matches the currently-
+        // playing track, do NOT cut audio or zero the seek bar. Instead:
+        //   • Update onlineContext to the new context (album / playlist /
+        //     search list / Discover row) so the next/prev buttons walk
+        //     through the freshly-tapped surface.
+        //   • Re-align onlineContextIndex to where the current track sits
+        //     in the new context (so seekToNextMediaItem lands correctly).
+        //   • Return early — playback keeps going at its current position.
+        //
+        // This makes tapping the same song in Search / Top Result / live
+        // suggestions / album tracks / Discover / Made-For-You / Browse
+        // Categories all behave the same: it never restarts what you're
+        // already listening to, and it always adopts the new queue.
+        val currentVideoId = _current.value?.sourceVideoId
+        if (currentVideoId != null && currentVideoId == result.videoId &&
+            controller?.isPlaying == true
+        ) {
+            onlineContext = context
+            onlineContextIndex = context.indexOfFirst { it.videoId == result.videoId }
+                .let { if (it >= 0) it else contextIndex.coerceIn(0, context.size - 1) }
+            DebugLog.i("play",
+                "same-track guard: ${result.title} already playing — context updated (size=${context.size}, idx=$onlineContextIndex), keeping playback")
+            return
+        }
+
         onlineContext = context
         onlineContextIndex = contextIndex
         DebugLog.i("play", "tap → \"${result.title}\" [${result.videoId}] (ctx=${context.size}, idx=$contextIndex)")
