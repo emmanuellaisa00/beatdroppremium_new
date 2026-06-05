@@ -427,23 +427,62 @@ fun SearchScreen(
                         }
                     }
                 }
-                !searching && q.isNotEmpty() && results.isEmpty() -> {
-                    // Explicit "no results" state
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                !searching && q.isNotEmpty() && results.isEmpty() && albums.isEmpty() && playlists.isEmpty() -> {
+                    // Smarter empty: the canonical 'no results' panel + a
+                    // 'Did you mean…?' simplification hint when the query
+                    // has 4+ words, + recent searches below so the user
+                    // can re-discover something they searched before.
+                    LazyColumn(
+                        contentPadding = PaddingValues(top = 24.dp, bottom = 160.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        item {
                             Icon(
                                 Ic.Search, null,
                                 tint     = C.textTertiary.copy(alpha = 0.5f),
                                 modifier = Modifier.size(48.dp),
                             )
-                            Spacer(Modifier.height(12.dp))
+                        }
+                        item { Spacer(Modifier.height(12.dp)) }
+                        item {
                             Text(
                                 "No results for \"$q\"",
                                 color     = C.textSecondary,
                                 fontSize  = 15.sp,
                                 fontWeight = FontWeight.Medium,
                             )
-                            Spacer(Modifier.height(4.dp))
+                        }
+                        // Did you mean — first 2 words of the query when 4+ words.
+                        val words = q.trim().split(Regex("\\s+"))
+                        if (words.size >= 4) {
+                            val shorter = words.take(2).joinToString(" ")
+                            item { Spacer(Modifier.height(14.dp)) }
+                            item {
+                                Row(
+                                    Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(C.accent.copy(alpha = 0.15f))
+                                        .pressableScale(
+                                            onClick = {
+                                                vm.setOnlineQuery(shorter)
+                                                vm.runOnlineSearch()
+                                            },
+                                            scaleTo = 0.95f,
+                                        )
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        "Try \"$shorter\"",
+                                        color = C.accent,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                }
+                            }
+                        }
+                        item { Spacer(Modifier.height(8.dp)) }
+                        item {
                             Text(
                                 "Try different keywords or check your connection",
                                 color     = C.textTertiary,
@@ -452,30 +491,78 @@ fun SearchScreen(
                                 modifier  = Modifier.padding(horizontal = 32.dp),
                             )
                         }
+                        // Recent searches below so the user can retry an old query.
+                        if (history.isNotEmpty()) {
+                            item { Spacer(Modifier.height(32.dp)) }
+                            item {
+                                Text(
+                                    "Or try again from recent",
+                                    color = C.textTertiary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                                )
+                            }
+                            items(history.take(5)) { past ->
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .pressableScale(onClick = {
+                                            vm.setOnlineQuery(past)
+                                            vm.runOnlineSearch()
+                                        })
+                                        .padding(vertical = 10.dp, horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(Ic.History, null, tint = C.textTertiary, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(14.dp))
+                                    Text(past, color = C.text, fontSize = 15.sp,
+                                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                        }
                     }
                 }
                 else -> {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Ic.MusicNote, null,
-                                tint     = C.textTertiary.copy(alpha = 0.6f),
-                                modifier = Modifier.size(64.dp),
-                            )
-                            Spacer(Modifier.height(16.dp))
+                    // ── Browse Categories (Spotify-style empty state) ─────
+                    // When the field is empty and there's no history, show
+                    // a scrollable grid of curated genre/mood tiles. Reuses
+                    // the same FeaturedPlaylist set MadeForYou hands to
+                    // Discover so the visual language stays consistent.
+                    // Each tile = 100dp tall accent-coloured card, tap →
+                    // opens the playlist's first track in Now Playing.
+                    LazyColumn(
+                        contentPadding = PaddingValues(top = 4.dp, bottom = 160.dp),
+                    ) {
+                        item {
                             Text(
-                                "Search millions of songs",
-                                color     = C.textSecondary,
-                                fontSize  = 15.sp,
-                                fontWeight = FontWeight.Medium,
+                                "Browse all",
+                                color = C.text,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 12.dp, start = 4.dp),
                             )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                "Find any song to stream or save to your library",
-                                color     = C.textTertiary,
-                                fontSize  = 13.sp,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            )
+                        }
+                        val categories = com.beatdrop.kt.youtube.MadeForYou.featured
+                        val rows = categories.chunked(2)
+                        items(rows.size) { rowIdx ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                rows[rowIdx].forEach { cat ->
+                                    BrowseCategoryCard(
+                                        title = cat.title,
+                                        accentHex = cat.accentHex,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = {
+                                            vm.playFeaturedPlaylist(cat.playlistId)
+                                            onExpandPlayer()
+                                        },
+                                    )
+                                }
+                                if (rows[rowIdx].size == 1) Spacer(Modifier.weight(1f))
+                            }
                         }
                     }
                 }
@@ -929,5 +1016,50 @@ private fun TopResultHero(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+// ─── Browse Category card ─────────────────────────────────────────────────────
+
+@Composable
+private fun BrowseCategoryCard(
+    title: String,
+    accentHex: Long,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val accent = Color(accentHex)
+    Box(
+        modifier = modifier
+            .height(100.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(accent)
+            .pressableScale(onClick = onClick, scaleTo = 0.96f)
+            .padding(14.dp),
+    ) {
+        // Diagonal accent darken overlay for visual depth (Spotify pattern).
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.0f),
+                            Color.Black.copy(alpha = 0.30f),
+                        ),
+                        start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                        end = androidx.compose.ui.geometry.Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
+                    ),
+                ),
+        )
+        Text(
+            title,
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.align(Alignment.TopStart),
+        )
     }
 }
