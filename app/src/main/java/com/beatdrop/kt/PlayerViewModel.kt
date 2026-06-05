@@ -1565,29 +1565,37 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         context: List<OnlineResult> = listOf(result),
         contextIndex: Int = context.indexOfFirst { it.videoId == result.videoId }.coerceAtLeast(0),
     ) {
-        // ── Same-track guard (Mode B) ───────────────────────────────────────
+        // ── Same-track guard (Mode B, loosened) ─────────────────────────────
         // If the user taps a result whose videoId matches the currently-
-        // playing track, do NOT cut audio or zero the seek bar. Instead:
-        //   • Update onlineContext to the new context (album / playlist /
-        //     search list / Discover row) so the next/prev buttons walk
-        //     through the freshly-tapped surface.
-        //   • Re-align onlineContextIndex to where the current track sits
-        //     in the new context (so seekToNextMediaItem lands correctly).
-        //   • Return early — playback keeps going at its current position.
+        // loaded track, do NOT cut audio or zero the seek bar. Instead:
+        //   • Update onlineContext + onlineContextIndex so next/prev walk
+        //     through the freshly-tapped surface and the lock-screen
+        //     'Next' slot reflects what the user now expects.
+        //   • If the player is paused, resume playback from the *current*
+        //     position (no restart). This matches Spotify behaviour: tap
+        //     a track you already had open → it just resumes.
+        //   • If already playing, leave it alone.
+        //   • Return early so the instant-cut block below never runs.
         //
-        // This makes tapping the same song in Search / Top Result / live
-        // suggestions / album tracks / Discover / Made-For-You / Browse
-        // Categories all behave the same: it never restarts what you're
-        // already listening to, and it always adopts the new queue.
+        // The previous version of this guard required
+        // controller.isPlaying == true, which meant tapping the same song
+        // while paused fell through to the full restart path. Now any
+        // 'same videoId' tap is honoured regardless of play/pause state.
         val currentVideoId = _current.value?.sourceVideoId
-        if (currentVideoId != null && currentVideoId == result.videoId &&
-            controller?.isPlaying == true
-        ) {
+        val c = controller
+        if (currentVideoId != null && currentVideoId == result.videoId && c != null) {
             onlineContext = context
             onlineContextIndex = context.indexOfFirst { it.videoId == result.videoId }
                 .let { if (it >= 0) it else contextIndex.coerceIn(0, context.size - 1) }
-            DebugLog.i("play",
-                "same-track guard: ${result.title} already playing — context updated (size=${context.size}, idx=$onlineContextIndex), keeping playback")
+            if (!c.isPlaying) {
+                // Resume from wherever we were paused — never seek to 0.
+                runCatching { c.play() }
+                DebugLog.i("play",
+                    "same-track guard: ${result.title} was paused — resumed @${c.currentPosition}ms, ctx size=${context.size}, idx=$onlineContextIndex")
+            } else {
+                DebugLog.i("play",
+                    "same-track guard: ${result.title} already playing — context updated (size=${context.size}, idx=$onlineContextIndex)")
+            }
             return
         }
 
