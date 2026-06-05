@@ -115,6 +115,7 @@ object Ic {
     val Stats             : ImageVector get() = Lucide.ChartBar
     val Lyrics            : ImageVector get() = Lucide.Quote
     val Lock              : ImageVector get() = Lucide.Lock
+    val Shield            : ImageVector get() = Lucide.ShieldCheck
     val LockOpen          : ImageVector get() = Lucide.LockOpen
     val Storage           : ImageVector get() = Lucide.HardDrive
     val SdCard            : ImageVector get() = Lucide.MemoryStick

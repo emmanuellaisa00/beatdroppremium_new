@@ -150,6 +150,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { prefs.setLastSeenWhatsNew(versionCode) }
     }
 
+    // ── Privacy / Terms acceptance ───────────────────────────────────────
+    suspend fun termsAcceptedVersion(): Int = prefs.termsAcceptedVersionFlow.first()
+    fun acceptTerms(versionCode: Int) {
+        viewModelScope.launch { prefs.setTermsAcceptedVersion(versionCode) }
+    }
+
     // ── Resolver backend (optional self-hosted yt-dlp proxy) ─────────────────
     private val _resolverBackend = MutableStateFlow("")
     val resolverBackend: StateFlow<String> = _resolverBackend.asStateFlow()

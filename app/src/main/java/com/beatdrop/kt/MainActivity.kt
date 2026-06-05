@@ -253,12 +253,46 @@ private sealed interface Dest {
 @Composable
 fun MainScaffold(vm: PlayerViewModel) {
     val C = LocalAppColors.current
+    val context = LocalContext.current
     var tab by rememberSaveable { mutableStateOf("library") }
     val stack = remember { mutableStateListOf<Dest>() }
     val currentDest: Dest = stack.lastOrNull() ?: Dest.Tabs
     fun push(d: Dest) { stack.add(d) }
     fun pop() { if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) } // ✅ UX3: pop() handled by AnimatedContent (improved transition spec)
     BackHandler(enabled = stack.isNotEmpty()) { pop() }
+
+    // ── Privacy / Terms acceptance gate ───────────────────────────────
+    // First-time prompt the moment the user lands on Discover / Search /
+    // Radio (the network-touching tabs). Local-only tabs (Library,
+    // Settings) don't trigger it. Acceptance is persisted as the
+    // currentVersionCode in Prefs.termsAcceptedVersion so this shows
+    // exactly once per app version that changes the policy.
+    val currentVersionCode = remember {
+        runCatching {
+            val pm = context.packageManager
+            val info = pm.getPackageInfo(context.packageName, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode.toInt()
+            else @Suppress("DEPRECATION") info.versionCode
+        }.getOrDefault(0)
+    }
+    var termsLoaded by rememberSaveable { mutableStateOf(false) }
+    var needsTerms  by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!termsLoaded) {
+            val accepted = vm.termsAcceptedVersion()
+            needsTerms = accepted < currentVersionCode
+            termsLoaded = true
+        }
+    }
+    val touchedNetworkTab = tab == "discover" || tab == "search" || tab == "radio"
+    if (needsTerms && touchedNetworkTab) {
+        com.beatdrop.kt.ui.components.TermsSheet(
+            onAccept = {
+                vm.acceptTerms(currentVersionCode)
+                needsTerms = false
+            },
+        )
+    }
 
     val current    by vm.current.collectAsState()
     val isPlaying  by vm.isPlaying.collectAsState()

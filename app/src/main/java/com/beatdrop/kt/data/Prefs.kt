@@ -42,6 +42,8 @@ class Prefs(private val context: Context) {
         val ONLINE_RECENTLY_PLAYED = stringPreferencesKey("online_recently_played")
         val DISCOVER_CACHE = stringPreferencesKey("discover_cache")
         val LAST_SEEN_WHATSNEW = intPreferencesKey("last_seen_whatsnew")
+        /** App versionCode at which the user accepted the privacy policy. 0 = never. */
+        val TERMS_ACCEPTED_VERSION = intPreferencesKey("terms_accepted_version")
     }
 
     // ── liked ──
@@ -96,6 +98,12 @@ class Prefs(private val context: Context) {
     val lastSeenWhatsNewFlow: Flow<Int> = context.dataStore.data.map { it[Keys.LAST_SEEN_WHATSNEW] ?: -1 }
     suspend fun setLastSeenWhatsNew(versionCode: Int) {
         context.dataStore.edit { it[Keys.LAST_SEEN_WHATSNEW] = versionCode }
+    }
+
+    // ── Privacy policy / Terms acceptance ──
+    val termsAcceptedVersionFlow: Flow<Int> = context.dataStore.data.map { it[Keys.TERMS_ACCEPTED_VERSION] ?: 0 }
+    suspend fun setTermsAcceptedVersion(versionCode: Int) {
+        context.dataStore.edit { it[Keys.TERMS_ACCEPTED_VERSION] = versionCode }
     }
 
     // Optional self-hosted resolver backend URL (Cloudflare Worker / Render etc.)
