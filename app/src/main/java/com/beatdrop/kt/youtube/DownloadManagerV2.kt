@@ -236,7 +236,7 @@ object DownloadManagerV2 {
                 isVideo = isVideo,
             ))
             _trackReady.tryEmit(track)
-            com.beatdrop.kt.playback.DownloadService.notifyComplete(context, result.title)
+            com.beatdrop.kt.playback.DownloadService.notifyComplete(context, result.title, result.videoId)
 
             // Record to download history
             DownloadHistory.record(DownloadHistory.DownloadRecord(

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Completion notification icon — solid check mark inside a circle.
+  Used as the small icon on download-complete notifications so the
+  status-bar glyph visually signals 'success' even before the user
+  expands the shade.
+
+  Same 24×24 footprint and 'monochrome white that Android tints' rule
+  as ic_notification.xml. Android will tint this white in the status
+  bar; the expanded notification's title/text colour stays system-
+  default.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Outer circle ring -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M12,2
+                          C17.52,2 22,6.48 22,12
+                          C22,17.52 17.52,22 12,22
+                          C6.48,22 2,17.52 2,12
+                          C2,6.48 6.48,2 12,2 Z
+                          M12,4
+                          C7.59,4 4,7.59 4,12
+                          C4,16.41 7.59,20 12,20
+                          C16.41,20 20,16.41 20,12
+                          C20,7.59 16.41,4 12,4 Z"/>
+    <!-- Check mark -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M10.6,15.6
+                          L7.0,12.0
+                          L8.4,10.6
+                          L10.6,12.8
+                          L15.6,7.8
+                          L17.0,9.2
+                          Z"/>
+</vector>

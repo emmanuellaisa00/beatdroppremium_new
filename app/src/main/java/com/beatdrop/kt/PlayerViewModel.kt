@@ -2058,6 +2058,33 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
      * Play a video from a URL (YouTube etc.).
      * Extracts the video ID and delegates to playOnline.
      */
+    /**
+     * Play any YouTube videoId — used for entry points where the user
+     * just gave us an id (download-complete notification tap, deep-link,
+     * etc.) without a full search-result row. We synthesise a minimal
+     * OnlineResult so prepareAndPlayOnline can render the optimistic
+     * Now Playing immediately, and the resolver fills in the real
+     * metadata once the stream URL is ready.
+     */
+    fun playOnlineByVideoId(videoId: String) {
+        if (videoId.isBlank()) return
+        // First look in the download history for the real title/artist —
+        // that gives the optimistic Now Playing the correct metadata
+        // immediately instead of the placeholder.
+        val record = com.beatdrop.kt.data.DownloadHistory.completedRecords()
+            .firstOrNull { it.videoId == videoId }
+        val result = com.beatdrop.kt.youtube.OnlineResult(
+            videoId = videoId,
+            title = record?.title.orEmpty(),
+            author = record?.artist.orEmpty(),
+            thumbnailUrl = record?.thumbnailUrl
+                ?: com.beatdrop.kt.youtube.ytThumbHd(videoId),
+            durationText = "",
+            durationSecs = record?.durationSecs ?: 0,
+        )
+        playOnline(result)
+    }
+
     fun playOnlineByUrl(url: String) {
         val detected = com.beatdrop.kt.util.ClipboardWatcher.parseUrl(url) ?: return
         if (detected.isPlaylist) return // Use PlaylistDownloadScreen for playlists

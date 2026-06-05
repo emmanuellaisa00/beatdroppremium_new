@@ -61,7 +61,7 @@ object DownloadManager {
             }.onSuccess { track ->
                 updateJob(DownloadJob(vid, result.title, DownloadStatus.COMPLETED, 100, track))
                 _trackReady.tryEmit(track)
-                DownloadService.notifyComplete(context, result.title)
+                DownloadService.notifyComplete(context, result.title, result.videoId)
             }.onFailure { err ->
                 if (err !is CancellationException) {
                     updateJob(DownloadJob(vid, result.title, DownloadStatus.FAILED, 0, null, err.message))

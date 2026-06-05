@@ -90,6 +90,16 @@ class MainActivity : ComponentActivity() {
                 val data = intent.data ?: return
                 // Will be handled by clipboard detection in Root composable
             }
+            "com.beatdrop.kt.PLAY_DOWNLOADED" -> {
+                // Tap on a 'download complete' notification. The Intent
+                // extra `play_video_id` carries the just-downloaded
+                // track's videoId; stash it in PendingDownloadPlay so
+                // the composable Root() picks it up on its next pass
+                // and routes through PlayerViewModel.playOnlineByVideoId.
+                intent.getStringExtra("play_video_id")?.let { videoId ->
+                    PendingDownloadPlay.videoId = videoId
+                }
+            }
         }
     }
 
@@ -97,6 +107,20 @@ class MainActivity : ComponentActivity() {
         cleanupWebViews?.invoke()
         super.onDestroy()
     }
+}
+
+/**
+ * Shared pigeonhole for an incoming 'play this downloaded track' intent.
+ * MainActivity.handleIncomingIntent (a non-Composable callback) writes
+ * to it; the Root composable consumes it inside a LaunchedEffect that
+ * has access to the PlayerViewModel.
+ *
+ * Single-value queue — only the most recent tap wins, which is what
+ * the user expects (rapid double-tap of two completed-download
+ * notifications should land on the second one).
+ */
+object PendingDownloadPlay {
+    @Volatile var videoId: String? = null
 }
 
 private val audioPermission: String
@@ -120,6 +144,23 @@ fun Root(vm: PlayerViewModel = viewModel()) {
         if (perm.status.isGranted) {
             vm.loadLibrary()
             if (notifPerm != null && !notifPerm.status.isGranted) notifPerm.launchPermissionRequest()
+        }
+    }
+
+    // Pick up a 'play this downloaded track' request landing from a
+    // completed-download notification tap. handleIncomingIntent
+    // (called from onCreate / onNewIntent) writes the videoId into
+    // PendingDownloadPlay; we consume it here once and route through
+    // playOnlineByVideoId. Wrapped in a tight poll so the effect
+    // catches both cold-start (notif tap launches app) and warm-
+    // resume (notif tap on an already-running app) cases.
+    LaunchedEffect(Unit) {
+        while (true) {
+            PendingDownloadPlay.videoId?.let { videoId ->
+                PendingDownloadPlay.videoId = null
+                vm.playOnlineByVideoId(videoId)
+            }
+            kotlinx.coroutines.delay(250)
         }
     }
 
