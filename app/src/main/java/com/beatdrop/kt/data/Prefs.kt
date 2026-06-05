@@ -44,6 +44,8 @@ class Prefs(private val context: Context) {
         val LAST_SEEN_WHATSNEW = intPreferencesKey("last_seen_whatsnew")
         /** App versionCode at which the user accepted the privacy policy. 0 = never. */
         val TERMS_ACCEPTED_VERSION = intPreferencesKey("terms_accepted_version")
+        /** Library sort mode (enum name string). Default = RECENT. */
+        val LIBRARY_SORT = stringPreferencesKey("library_sort")
     }
 
     // ── liked ──
@@ -106,6 +108,17 @@ class Prefs(private val context: Context) {
     val termsAcceptedVersionFlow: Flow<Int> = context.dataStore.data.map { it[Keys.TERMS_ACCEPTED_VERSION] ?: 0 }
     suspend fun setTermsAcceptedVersion(versionCode: Int) {
         context.dataStore.edit { it[Keys.TERMS_ACCEPTED_VERSION] = versionCode }
+    }
+
+    // ── Library sort mode ──
+    // Default RECENT (most recently added first) — what users expect on
+    // a music app launch. Stored as enum name; PlayerViewModel hydrates
+    // _sort from this flow on startup.
+    val librarySortFlow: Flow<String> = context.dataStore.data.map {
+        it[Keys.LIBRARY_SORT] ?: "RECENT"
+    }
+    suspend fun setLibrarySort(name: String) {
+        context.dataStore.edit { it[Keys.LIBRARY_SORT] = name }
     }
 
     // Optional self-hosted resolver backend URL (Cloudflare Worker / Render etc.)

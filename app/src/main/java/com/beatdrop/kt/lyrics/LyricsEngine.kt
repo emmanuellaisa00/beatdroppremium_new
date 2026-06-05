@@ -4,15 +4,21 @@ import android.content.Context
 import com.beatdrop.kt.data.Track
 
 /**
- * Unified lyrics fetcher with four-tier fallback — never returns empty for a
- * non-instrumental track:
+ * Unified lyrics fetcher with a three-tier fallback chain.
+ *
  *   1. Sidecar .lrc next to audio file
  *   2. App cache .lrc (written after any previous online fetch)
  *   3. LrcLib.net (synced + plain timed)
- *   4. Auto-generated placeholder timed from title/artist (never fails)
  *
- * Any result from tiers 2 or 3 is automatically written to the app cache so
- * the next play is instant and offline-safe.
+ * Any result from tier 3 is automatically written to the app cache so the
+ * next play is instant and offline-safe.
+ *
+ * If all tiers miss, returns an empty list — the UI then shows its
+ * 'No synced lyrics available' state. Previous versions had a tier-4
+ * placeholder that synthesised fake timed lyrics from the title + artist
+ * words ('Song Title — Artist Name' scrolling across the screen), which
+ * users were correctly reading as 'the app thinks the song's title IS
+ * its lyrics' — confusing and wrong. Removed.
  */
 object LyricsEngine {
 
@@ -30,29 +36,7 @@ object LyricsEngine {
             return online
         }
 
-        // Tier 4 — generated placeholder from metadata (never fails)
-        return generatePlaceholder(track)
-    }
-
-    /** Split title+artist into words and create evenly-spaced timed lines so
-     *  the lyrics UI is never blank and the user sees *something* synced. */
-    private fun generatePlaceholder(track: Track): List<LyricLine> {
-        val raw = "${track.title} — ${track.artist}"
-        val words = raw.split(Regex("""[\s\-–—]+""")).filter { it.isNotBlank() }
-        if (words.isEmpty()) return listOf(LyricLine(0L, raw))
-
-        val durSec = (track.durationMs / 1000).coerceAtLeast(30).toInt()
-        val introMs = 1500L
-        val outroMs = 1500L
-        val availMs = (durSec * 1000L) - introMs - outroMs
-        val perWord = availMs / words.size
-
-        val out = ArrayList<LyricLine>(words.size)
-        var cursor = introMs
-        for (w in words) {
-            out.add(LyricLine(cursor, w))
-            cursor += perWord
-        }
-        return out
+        // No real lyrics anywhere — let the UI show its empty state.
+        return emptyList()
     }
 }

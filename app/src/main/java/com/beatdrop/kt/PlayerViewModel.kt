@@ -44,9 +44,16 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     val query: StateFlow<String> = _query.asStateFlow()
     fun setQuery(q: String) { _query.value = q }
 
-    private val _sort = MutableStateFlow(SortMode.TITLE_ASC)
+    // Library sort mode — default RECENT (recently added first), persisted
+    // across app launches via Prefs.librarySortFlow. The init { } block
+    // below hydrates _sort from disk before the UI renders so the user
+    // never sees the wrong default flash.
+    private val _sort = MutableStateFlow(SortMode.RECENT)
     val sort: StateFlow<SortMode> = _sort.asStateFlow()
-    fun setSort(s: SortMode) { _sort.value = s }
+    fun setSort(s: SortMode) {
+        _sort.value = s
+        viewModelScope.launch { prefs.setLibrarySort(s.name) }
+    }
 
     // ── Playback ──────────────────────────────────────────────────────────────
     private val _current   = MutableStateFlow<Track?>(null)
@@ -425,6 +432,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         prefs.playlistsFlow.onEach { _playlists.value = it }.launchIn(viewModelScope)
         prefs.playCountsFlow.onEach { _playCounts.value = it }.launchIn(viewModelScope)
         prefs.hapticsFlow.onEach { _haptics.value = it }.launchIn(viewModelScope)
+        prefs.librarySortFlow.onEach { name ->
+            // Tolerate stale enum names (e.g. user downgraded; we renamed
+            // an enum) by falling back to the RECENT default.
+            _sort.value = runCatching { SortMode.valueOf(name) }.getOrDefault(SortMode.RECENT)
+        }.launchIn(viewModelScope)
         prefs.themeFlow.onEach { _theme.value = it }.launchIn(viewModelScope)
         prefs.defaultShuffleFlow.onEach { _defaultShuffle.value = it }.launchIn(viewModelScope)
         prefs.autoDjFlow.onEach { _autoDjEnabled.value = it }.launchIn(viewModelScope)
