@@ -393,13 +393,20 @@ fun MainScaffold(vm: PlayerViewModel) {
             AnimatedContent(
                 targetState = currentDest,
                 transitionSpec = {
+                    // Tighter durations matching Spotify-iOS feel:
+                    //   tab-swap:  140/110 ms (was 240/200)
+                    //   push:      220/160/160 in, 130/140 out (was 340/300/300, 200/220)
+                    //   pop:       130 in, 160/100 out          (was 180, 220/120)
+                    // Sub-200ms feels instant; sub-300ms feels snappy; over
+                    // 300ms feels deliberate-but-noticeable. Pushed
+                    // everything one tier down from 'deliberate' to 'snappy'.
                     val isPush = targetState != Dest.Tabs && initialState == Dest.Tabs
                     if (targetState == Dest.Tabs && initialState == Dest.Tabs) {
-                        fadeIn(tween(240)) togetherWith fadeOut(tween(200)) // Spotify-smooth tab transition // ✅ UX2 Fixed
+                        fadeIn(tween(140)) togetherWith fadeOut(tween(110))
                     } else if (isPush) {
-                        (slideInHorizontally(tween(340)) { it / 3 } + fadeIn(tween(300)) + scaleIn(tween(300), initialScale = 0.96f)) togetherWith (fadeOut(tween(200)) + scaleOut(tween(220), targetScale = 0.98f)) // Premium Spotify-like push
+                        (slideInHorizontally(tween(220)) { it / 4 } + fadeIn(tween(160)) + scaleIn(tween(160), initialScale = 0.97f)) togetherWith (fadeOut(tween(130)) + scaleOut(tween(140), targetScale = 0.99f))
                     } else {
-                        fadeIn(tween(180)) togetherWith (slideOutHorizontally(tween(220)) { it } + fadeOut(tween(120)))
+                        fadeIn(tween(130)) togetherWith (slideOutHorizontally(tween(160)) { it } + fadeOut(tween(100)))
                     }
                 },
                 label = "screen",

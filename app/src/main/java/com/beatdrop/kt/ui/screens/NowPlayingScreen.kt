@@ -246,8 +246,11 @@ fun NowPlayingScreen(
             AnimatedContent(
                 targetState = showLyrics,
                 transitionSpec = {
-                    (fadeIn(tween(320)) + slideInVertically(tween(320)) { it / 12 }) togetherWith
-                    (fadeOut(tween(220)) + slideOutVertically(tween(220)) { -it / 12 })
+                    // Faster lyrics-mode swap (Spotify-iOS feel):
+                    //   in:  200/200 (was 320/320)
+                    //   out: 150/150 (was 220/220)
+                    (fadeIn(tween(200)) + slideInVertically(tween(200)) { it / 12 }) togetherWith
+                    (fadeOut(tween(150)) + slideOutVertically(tween(150)) { -it / 12 })
                 },
                 label      = "modeSwitch",
                 modifier   = Modifier.weight(1f).fillMaxWidth(),
@@ -617,8 +620,8 @@ fun NowPlayingScreen(
         // seek; tap the ✕ to collapse back to the preview pane.
         AnimatedVisibility(
             visible = fullLyrics && showLyrics && lyrics.isNotEmpty(),
-            enter   = fadeIn(tween(220)),
-            exit    = fadeOut(tween(180)),
+            enter   = fadeIn(tween(150)),
+            exit    = fadeOut(tween(120)),
             modifier = Modifier.fillMaxSize(),
         ) {
             Box(
