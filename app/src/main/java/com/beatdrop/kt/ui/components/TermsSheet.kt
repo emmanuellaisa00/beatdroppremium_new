@@ -132,9 +132,9 @@ fun TermsSheet(
                             "backend that mirrors any of it.",
                 )
                 BulletParagraph(
-                    title = "Search & streaming go directly to YouTube",
+                    title = "Search & streaming use public music catalogues",
                     body  = "When you search or play a track, your device contacts " +
-                            "YouTube / YouTube Music (a Google service) directly. " +
+                            "the public music catalogues BeatDrop sources from. " +
                             "Standard browser-style headers apply.",
                 )
                 BulletParagraph(
@@ -154,16 +154,18 @@ fun TermsSheet(
                         ParagraphText(
                             "Library index, playback state, liked songs, playlists, " +
                             "play counts, search history (last few queries), downloaded " +
-                            "audio files, .lrc lyrics cache, theme + crossfade settings, " +
-                            "private-folder PIN. All under Android/data/com.beatdrop.kt/.",
+                            "audio files, .lrc lyrics cache, theme + crossfade + language " +
+                            "settings, private-folder PIN. All under " +
+                            "Android/data/com.beatdrop.kt/.",
                         )
                         SectionHeading("Data sent off-device")
                         ParagraphText(
-                            "HTTPS requests to youtube.com / youtubei.googleapis.com / " +
-                            "music.youtube.com (search + stream resolution), " +
-                            "googlevideo.com (audio bytes), lrclib.net (synced lyrics), " +
-                            "and — only if you've configured one in Settings — your own " +
-                            "self-hosted resolver backend.",
+                            "HTTPS requests to the public music catalogues BeatDrop " +
+                            "sources from (search query + track identifier), audio " +
+                            "byte-range requests for streaming, a synced-lyrics " +
+                            "lookup (track title + artist), and — only if you've " +
+                            "configured one in Settings — your own self-hosted " +
+                            "resolver backend.",
                         )
                         SectionHeading("Your rights")
                         ParagraphText(
@@ -181,18 +183,21 @@ fun TermsSheet(
                             "and on sideload builds MANAGE_EXTERNAL_STORAGE (sidecar .lrc " +
                             "+ user-chosen download folders).",
                         )
-                        SectionHeading("YouTube relationship")
+                        SectionHeading("Third-party catalogues")
                         ParagraphText(
-                            "BeatDrop is not affiliated with, endorsed by, or sponsored " +
-                            "by Google or YouTube. Your use of streamed content is also " +
-                            "subject to Google's / YouTube's Terms of Service and local " +
-                            "copyright law.",
+                            "The audio your device streams is sourced from public " +
+                            "music catalogues over the open internet. Your use of " +
+                            "that content is subject to the terms published by those " +
+                            "catalogue providers and to applicable copyright law in " +
+                            "your jurisdiction. Laisacorp is not affiliated with, " +
+                            "endorsed by, or sponsored by any catalogue provider.",
                         )
                         SectionHeading("Contact")
                         ParagraphText(
-                            "Publisher: Laisacorp. Open an issue at " +
-                            "github.com/emmanuellaisa00/beatdroppremium with the title " +
-                            "\"GDPR / DPA request\" for any data-protection enquiry.",
+                            "Publisher: Laisacorp. For data-protection requests, " +
+                            "contact Laisacorp directly through the support channel " +
+                            "listed on the Play Store / sideload page where you got " +
+                            "the app. Put \"GDPR / DPA request\" in the subject line.",
                         )
                     }
                 }

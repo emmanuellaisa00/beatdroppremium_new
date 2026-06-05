@@ -30,7 +30,7 @@
     <string name="retry">Tentar de novo</string>
     <string name="accept_continue">Aceitar e continuar</string>
 
-    <string name="search_hybrid_placeholder">Busque na sua biblioteca ou no YouTube…</string>
+    <string name="search_hybrid_placeholder">Busque na biblioteca ou no catálogo BeatDrop…</string>
     <string name="search_online_placeholder">Busque músicas, artistas, álbuns…</string>
     <string name="library_search_placeholder">Busque na biblioteca ou online…</string>
 

@@ -32,7 +32,7 @@
     <string name="accept_continue">Accept &amp; Continue</string>
 
     <!-- Search placeholders -->
-    <string name="search_hybrid_placeholder">Search your library or YouTube…</string>
+    <string name="search_hybrid_placeholder">Search library or BeatDrop catalogue…</string>
     <string name="search_online_placeholder">Search songs, artists, albums…</string>
     <string name="library_search_placeholder">Search library or online…</string>
 

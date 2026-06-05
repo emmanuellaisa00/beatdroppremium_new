@@ -176,9 +176,9 @@ fun SearchScreen(
                     }
                 },
                 placeholder = if (mode == SearchMode.HYBRID)
-                    "Search your library or YouTube…"
+                    androidx.compose.ui.res.stringResource(com.beatdrop.kt.R.string.search_hybrid_placeholder)
                 else
-                    "Search songs, artists, albums…",
+                    androidx.compose.ui.res.stringResource(com.beatdrop.kt.R.string.search_online_placeholder),
                 onSubmit = { vm.runOnlineSearch() },
                 submitting = searching,
             )
@@ -272,7 +272,6 @@ fun SearchScreen(
                                     Icon(Ic.Close, "Delete", tint = C.textTertiary, modifier = Modifier.size(16.dp))
                                 }
                             }
-                            HorizontalDivider(color = C.separator, thickness = 0.5.dp)
                         }
                     } else if (showSuggestions) {
                         items(suggestions) { suggestion ->
@@ -290,7 +289,6 @@ fun SearchScreen(
                                 Spacer(Modifier.width(14.dp))
                                 Text(suggestion, color = C.text, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
-                            HorizontalDivider(color = C.separator, thickness = 0.5.dp)
                         }
                     }
                 }
@@ -900,10 +898,16 @@ private fun SearchFilterChips(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
+        // Order: All → Playlists → Albums → Songs.
+        // Playlists + Albums first because users are more likely to want
+        // 'open this collection' than 'play one song' when they're
+        // navigating results. Songs is the last filter because if the
+        // user wants just-songs they're more likely to already know it
+        // and tap explicitly.
         item { Chip("All",       total,         selected == SearchFilter.ALL,       C) { onSelect(SearchFilter.ALL) } }
-        item { Chip("Songs",     songCount,     selected == SearchFilter.SONGS,     C) { onSelect(SearchFilter.SONGS) } }
-        item { Chip("Albums",    albumCount,    selected == SearchFilter.ALBUMS,    C) { onSelect(SearchFilter.ALBUMS) } }
         item { Chip("Playlists", playlistCount, selected == SearchFilter.PLAYLISTS, C) { onSelect(SearchFilter.PLAYLISTS) } }
+        item { Chip("Albums",    albumCount,    selected == SearchFilter.ALBUMS,    C) { onSelect(SearchFilter.ALBUMS) } }
+        item { Chip("Songs",     songCount,     selected == SearchFilter.SONGS,     C) { onSelect(SearchFilter.SONGS) } }
     }
 }
 
@@ -921,18 +925,21 @@ private fun Chip(
         count == 0 -> C.text.copy(alpha = 0.40f)
         else       -> C.text.copy(alpha = 0.85f)
     }
+    // Generously rounded pill — radius 22 instead of 50 (a 50-radius
+    // pill on a chip taller than 44dp would feel like a tablet button).
+    // Extra horizontal padding gives the label room to breathe.
     Row(
         Modifier
-            .clip(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(22.dp))
             .background(bg)
             .pressableScale(onClick = onClick, scaleTo = 0.94f)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             label,
             color    = fg,
-            fontSize = 13.sp,
+            fontSize = 14.sp,
             fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
         )
         if (count > 0) {
@@ -1009,11 +1016,9 @@ private fun LiveSuggestionRow(
             modifier = Modifier.size(16.dp),
         )
     }
-    androidx.compose.material3.HorizontalDivider(
-        color = C.separator.copy(alpha = 0.5f),
-        thickness = 0.5.dp,
-        modifier = Modifier.padding(start = 56.dp),
-    )
+    // (Dividers removed per design feedback — they were appearing as
+    // 'lines splitting search results out of nowhere'. Spacing between
+    // rows now comes from each row's own vertical padding, no hairlines.)
 }
 
 // ─── Top Result hero card ─────────────────────────────────────────────────────
