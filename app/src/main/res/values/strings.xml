@@ -1,3 +1,56 @@
 <resources>
     <string name="app_name">BeatDrop</string>
+
+    <!-- Bottom navigation tabs -->
+    <string name="tab_library">Library</string>
+    <string name="tab_discover">Discover</string>
+    <string name="tab_search">Search</string>
+    <string name="tab_radio">Radio</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Section headers -->
+    <string name="section_made_for_you">MADE FOR YOU</string>
+    <string name="section_hot_trending">HOT TRENDING</string>
+    <string name="section_quick_picks">QUICK PICKS</string>
+    <string name="section_albums">Albums</string>
+    <string name="section_songs">Songs</string>
+    <string name="section_playlists">Playlists</string>
+    <string name="section_top_result">Top Result</string>
+    <string name="section_in_your_library">In Your Library</string>
+    <string name="section_recent_searches">Recent Searches</string>
+    <string name="section_browse_all">Browse all</string>
+
+    <!-- Common buttons -->
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="shuffle">Shuffle</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="download">Download</string>
+    <string name="downloaded">Downloaded</string>
+    <string name="retry">Retry</string>
+    <string name="accept_continue">Accept &amp; Continue</string>
+
+    <!-- Search placeholders -->
+    <string name="search_hybrid_placeholder">Search your library or YouTube…</string>
+    <string name="search_online_placeholder">Search songs, artists, albums…</string>
+    <string name="library_search_placeholder">Search library or online…</string>
+
+    <!-- Empty / loading -->
+    <string name="empty_no_results">No results for &#8220;%1$s&#8221;</string>
+    <string name="empty_try_different">Try different keywords or check your connection</string>
+    <string name="empty_offline">You\'re offline</string>
+    <string name="empty_offline_discover">Connect to the internet to discover trending music.</string>
+    <string name="empty_no_synced_lyrics">No synced lyrics available.</string>
+
+    <!-- Album / playlist labels -->
+    <string name="album_download_all">Download album</string>
+    <string name="playlist_loaded_from_search">Loaded %1$s from a fresh search.</string>
+    <string name="playlist_load_failed">Couldn\'t load %1$s. Check your connection and try again.</string>
+
+    <!-- Privacy / Terms sheet -->
+    <string name="terms_title">Before you continue</string>
+    <string name="terms_subtitle">Privacy &amp; Terms · 30-second read</string>
+    <string name="terms_read_more">Read full policy ↓</string>
+    <string name="terms_read_less">Show less ↑</string>
 </resources>

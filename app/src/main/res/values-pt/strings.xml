@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Portuguese (Português) localization -->
+<resources>
+    <string name="app_name">BeatDrop</string>
+
+    <string name="tab_library">Biblioteca</string>
+    <string name="tab_discover">Descobrir</string>
+    <string name="tab_search">Buscar</string>
+    <string name="tab_radio">Rádio</string>
+    <string name="tab_settings">Configurações</string>
+
+    <string name="section_made_for_you">FEITO PARA VOCÊ</string>
+    <string name="section_hot_trending">EM ALTA</string>
+    <string name="section_quick_picks">SELEÇÃO RÁPIDA</string>
+    <string name="section_albums">Álbuns</string>
+    <string name="section_songs">Músicas</string>
+    <string name="section_playlists">Playlists</string>
+    <string name="section_top_result">Melhor resultado</string>
+    <string name="section_in_your_library">Na sua biblioteca</string>
+    <string name="section_recent_searches">Buscas recentes</string>
+    <string name="section_browse_all">Explorar tudo</string>
+
+    <string name="play">Tocar</string>
+    <string name="pause">Pausar</string>
+    <string name="shuffle">Aleatório</string>
+    <string name="cancel">Cancelar</string>
+    <string name="save">Salvar</string>
+    <string name="download">Baixar</string>
+    <string name="downloaded">Baixado</string>
+    <string name="retry">Tentar de novo</string>
+    <string name="accept_continue">Aceitar e continuar</string>
+
+    <string name="search_hybrid_placeholder">Busque na sua biblioteca ou no YouTube…</string>
+    <string name="search_online_placeholder">Busque músicas, artistas, álbuns…</string>
+    <string name="library_search_placeholder">Busque na biblioteca ou online…</string>
+
+    <string name="empty_no_results">Nenhum resultado para &#8220;%1$s&#8221;</string>
+    <string name="empty_try_different">Tente outras palavras ou verifique sua conexão</string>
+    <string name="empty_offline">Você está offline</string>
+    <string name="empty_offline_discover">Conecte-se à internet para descobrir música em alta.</string>
+    <string name="empty_no_synced_lyrics">Nenhuma letra sincronizada disponível.</string>
+
+    <string name="album_download_all">Baixar álbum</string>
+    <string name="playlist_loaded_from_search">%1$s carregada de uma nova busca.</string>
+    <string name="playlist_load_failed">Não foi possível carregar %1$s. Verifique sua conexão e tente novamente.</string>
+
+    <string name="terms_title">Antes de continuar</string>
+    <string name="terms_subtitle">Privacidade e termos · Leitura de 30 segundos</string>
+    <string name="terms_read_more">Ler política completa ↓</string>
+    <string name="terms_read_less">Mostrar menos ↑</string>
+</resources>

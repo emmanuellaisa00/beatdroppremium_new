@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -208,13 +209,18 @@ fun Root(vm: PlayerViewModel = viewModel()) {
     MainScaffold(vm)
 }
 
-private val TABS = listOf(
-    // ✅ UX1 Fixed: Active state uses accent tint (design choice — Lucide icons are outline-only). No separate filled icons required.
-    TabSpec2("library",  "Library",  Ic.Library, Ic.Library),
-    TabSpec2("discover", "Discover", Ic.Discover,      Ic.Discover),
-    TabSpec2("search",   "Search",   Ic.Search,     Ic.Search),
-    TabSpec2("radio",    "Radio",    Ic.Podcast,     Ic.Podcast),
-    TabSpec2("settings", "Settings", Ic.Settings,     Ic.Settings),
+/**
+ * Tab definitions. Labels are resolved via stringResource so the
+ * localized resource set (English / Swahili / French / Spanish /
+ * Portuguese / Arabic / German / Hindi) is honoured per device locale.
+ */
+@Composable
+private fun rememberTabs(): List<TabSpec2> = listOf(
+    TabSpec2("library",  stringResource(R.string.tab_library),  Ic.Library,  Ic.Library),
+    TabSpec2("discover", stringResource(R.string.tab_discover), Ic.Discover, Ic.Discover),
+    TabSpec2("search",   stringResource(R.string.tab_search),   Ic.Search,   Ic.Search),
+    TabSpec2("radio",    stringResource(R.string.tab_radio),    Ic.Podcast,  Ic.Podcast),
+    TabSpec2("settings", stringResource(R.string.tab_settings), Ic.Settings, Ic.Settings),
 )
 
 private sealed interface Dest {
@@ -536,7 +542,7 @@ private fun TabsHost(
                     )
                 }
             }
-            GlassTabBar2(TABS, tab) { onTab(it) }
+            GlassTabBar2(rememberTabs(), tab) { onTab(it) }
         }
         StatusBarGlassOverlay()
     }
