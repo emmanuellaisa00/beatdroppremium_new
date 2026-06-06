@@ -747,7 +747,8 @@ private fun Equalizer(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.Bottom,
     ) {
         listOf(300, 100, 500, 200).forEach { delay ->
-            val h by infinite.animateFloat(
+            val h by androidx.compose.animation.core.animateFloat(
+                transition = infinite,
                 initialValue = 0.4f,
                 targetValue = 1.0f,
                 animationSpec = androidx.compose.animation.core.infiniteRepeatable(
@@ -766,14 +767,19 @@ private fun Equalizer(modifier: Modifier = Modifier) {
     }
 }
 
+/** Compose's `InfiniteTransition.animateFloat` accessed positionally. */
 @Composable
-private fun androidx.compose.animation.core.InfiniteTransition.animateFloat(
+private inline fun androidx.compose.animation.core.animateFloat(
+    transition: androidx.compose.animation.core.InfiniteTransition,
     initialValue: Float,
     targetValue: Float,
     animationSpec: androidx.compose.animation.core.InfiniteRepeatableSpec<Float>,
     label: String,
-): State<Float> = androidx.compose.animation.core.animateFloat(
-    initialValue, targetValue, animationSpec, label
+): State<Float> = transition.animateFloat(
+    initialValue = initialValue,
+    targetValue = targetValue,
+    animationSpec = animationSpec,
+    label = label,
 )
 
 

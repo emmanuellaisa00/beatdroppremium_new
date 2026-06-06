@@ -45,6 +45,39 @@ fun DiscoverScreen(
         vm.loadMadeForYou()
     }
 
+    // Pre-compute the merged quick-access list at the composable level so we
+    // don't call remember() from inside the LazyListScope content lambda
+    // (which isn't @Composable).
+    val quickItems = remember(trending, popHits, current) {
+        val merged = (current?.let {
+            listOf(QuickAccessItem(
+                id = "current",
+                title = it.title,
+                subtitle = it.artist,
+                artworkUri = it.artworkUri,
+                ringAccent = true,
+            ))
+        } ?: emptyList()) +
+        trending.take(3).map {
+            QuickAccessItem(
+                id = it.videoId,
+                title = it.title,
+                subtitle = it.author,
+                artworkUri = it.thumbnailUrl,
+            )
+        } +
+        popHits.take(2).map {
+            QuickAccessItem(
+                id = it.videoId,
+                title = it.title,
+                subtitle = it.author,
+                artworkUri = it.thumbnailUrl,
+                glyph = CoverGlyph.Disc,
+            )
+        }
+        merged.take(6)
+    }
+
     ScreenScaffold {
         LazyColumn(
             Modifier.fillMaxSize(),
@@ -71,35 +104,6 @@ fun DiscoverScreen(
             }
 
             // ── Quick access (2-col panel of recent / pinned items) ──────
-            val quickItems = remember(trending, popHits, current) {
-                val merged = (current?.let {
-                    listOf(QuickAccessItem(
-                        id = "current",
-                        title = it.title,
-                        subtitle = it.artist,
-                        artworkUri = it.artworkUri,
-                        ringAccent = true,
-                    ))
-                } ?: emptyList()) +
-                trending.take(3).map {
-                    QuickAccessItem(
-                        id = it.videoId,
-                        title = it.title,
-                        subtitle = it.author,
-                        artworkUri = it.thumbnailUrl,
-                    )
-                } +
-                popHits.take(2).map {
-                    QuickAccessItem(
-                        id = it.videoId,
-                        title = it.title,
-                        subtitle = it.author,
-                        artworkUri = it.thumbnailUrl,
-                        glyph = CoverGlyph.Disc,
-                    )
-                }
-                merged.take(6)
-            }
             if (quickItems.isNotEmpty()) {
                 item {
                     Box(Modifier.padding(horizontal = PageHorizontalPadding, vertical = 18.dp)) {

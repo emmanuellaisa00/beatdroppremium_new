@@ -54,6 +54,18 @@ fun LibraryScreen(
     val recentlyPlayed = remember(tracks) {
         tracks.sortedByDescending { it.dateAdded }.take(10)
     }
+    val albumsGrouped = remember(tracks) {
+        tracks.groupBy { it.album }
+            .filterKeys { it.isNotBlank() }
+            .map { (album, ts) -> Triple(album, ts.first().artist, ts.first().artworkUri) }
+            .sortedBy { it.first.lowercase() }
+    }
+    val artistsGrouped = remember(tracks) {
+        tracks.groupBy { it.artist }
+            .filterKeys { it.isNotBlank() }
+            .map { (artist, ts) -> artist to ts.size }
+            .sortedBy { it.first.lowercase() }
+    }
 
     ScreenScaffold {
         LazyColumn(
@@ -222,14 +234,7 @@ fun LibraryScreen(
                     }
                 }
                 tabIndex == 1 -> {
-                    val albums = remember(tracks) {
-                        tracks.groupBy { it.album }
-                            .filterKeys { it.isNotBlank() }
-                            .map { (album, ts) ->
-                                Triple(album, ts.first().artist, ts.first().artworkUri)
-                            }
-                            .sortedBy { it.first.lowercase() }
-                    }
+                    val albums = albumsGrouped
                     item { SectionTitle("Albums", trailing = "${albums.size} albums") }
                     itemsIndexed(albums.chunked(2)) { _, pair ->
                         Row(
@@ -269,12 +274,7 @@ fun LibraryScreen(
                     }
                 }
                 else -> {
-                    val artists = remember(tracks) {
-                        tracks.groupBy { it.artist }
-                            .filterKeys { it.isNotBlank() }
-                            .map { (artist, ts) -> artist to ts.size }
-                            .sortedBy { it.first.lowercase() }
-                    }
+                    val artists = artistsGrouped
                     item { SectionTitle("Artists", trailing = "${artists.size} artists") }
                     items(artists) { (artist, count) ->
                         Box(Modifier.padding(horizontal = PageHorizontalPadding, vertical = 5.dp)) {
