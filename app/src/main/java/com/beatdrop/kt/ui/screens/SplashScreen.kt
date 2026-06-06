@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
@@ -60,14 +61,15 @@ fun SplashScreen(onDone: () -> Unit) {
         Modifier
             .fillMaxSize()
             .pressableScale(onClick = { onDone() })
-            // Flat #0E0A1F — exact match to themes.xml
-            // windowSplashScreenBackground. Updated alongside the new
-            // 'Cascade Drop' app icon: deep midnight indigo gives
-            // maximum chromatic separation from the icon's warm
-            // violet/coral/gold gradient so the logo glows on the
-            // backdrop. System splash → branded Compose splash → app
-            // is one continuous colour, zero visible swap.
-            .background(Color(0xFF0E0A1F)),
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF1A0A14),
+                        Color(0xFF050307),
+                        Color(0xFF000000),
+                    ),
+                )
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -75,14 +77,13 @@ fun SplashScreen(onDone: () -> Unit) {
                 painter = painterResource(R.drawable.beatdrop_logo),
                 contentDescription = "BeatDrop",
                 modifier = Modifier
-                    .size(128.dp)
+                    .size(120.dp)
                     .scale(scale)
                     .clip(RoundedCornerShape(28.dp)),
             )
             Spacer(Modifier.height(22.dp))
-            Row(Modifier.scale(scale)) {
-                Text("Beat", color = C.accent, style = Type.largeTitle, fontWeight = FontWeight.Black, fontSize = 34.sp)
-                Text("Drop", color = Color.White, style = Type.largeTitle, fontWeight = FontWeight.Black, fontSize = 34.sp)
+            Row(Modifier.scale(scale).alpha(alpha)) {
+                Text("BeatDrop", color = Color.White, style = Type.largeTitle, fontWeight = FontWeight.Bold, fontSize = 32.sp, letterSpacing = (-0.8).sp)
             }
         }
 

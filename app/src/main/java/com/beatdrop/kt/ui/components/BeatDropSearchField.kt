@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -34,7 +35,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -46,25 +46,11 @@ import com.beatdrop.kt.ui.theme.LocalAppColors
 import com.beatdrop.kt.ui.theme.Type
 
 /**
- * BeatDropSearchField — the single, consistent search input used across the app.
- *
- * Replaces the four legacy inline search bars (LibraryScreen, SearchScreen,
- * DiscoverScreen, LocalDiscoverScreen) that each had subtly different colors,
- * states and accessibility behaviour.
- *
- * Visual contract:
- *   • Pill (default 50.dp radius), 52.dp tall, full width.
- *   • Resting:   solid elevated-glass fill, 1.dp border, icon + placeholder
- *                in textSecondary (always readable, never washed out).
- *   • Focused:   accent border (1.5.dp) + accent leading icon + soft accent
- *                glow shadow. Placeholder steps down to textTertiary so the
- *                user knows they can type.
- *   • Typing:    text in C.text, accent caret, trailing × clear button, and
- *                — when [submitting] is true — the accent border pulses
- *                (no spinner, no "Loading…" text).
- *
- * The same 52.dp height is preserved across every state so there is zero
- * layout shift between resting / focused / loading.
+ * BeatDropSearchField — matches the HTML concept:
+ *   • Pill (radius 28), 52–56 dp tall
+ *   • Dark obsidian glass background, hairline border
+ *   • Search icon 60% white opacity, placeholder 45% white
+ *   • Apple Music pink (#FA2D48) caret + focus border
  */
 @Composable
 fun BeatDropSearchField(
@@ -75,22 +61,20 @@ fun BeatDropSearchField(
     onSubmit: (() -> Unit)? = null,
     submitting: Boolean = false,
     showClear: Boolean = true,
-    radius: Dp = 50.dp,
+    radius: Dp = 28.dp,
 ) {
     val C = LocalAppColors.current
     val keyboard = LocalSoftwareKeyboardController.current
     val interaction = remember { MutableInteractionSource() }
     val isFocused by interaction.collectIsFocusedAsState()
 
-    // ── Border colour: accent on focus, glassCardElevatedBorder at rest. ─
     val borderColor by animateColorAsState(
-        targetValue = if (isFocused) C.accent else Color.White.copy(alpha = if (C.isDark) 0.14f else 0.32f),
+        targetValue = if (isFocused) C.accent.copy(alpha = 0.85f) else Color.White.copy(alpha = if (C.isDark) 0.08f else 0.18f),
         animationSpec = tween(220),
         label = "border",
     )
-    val borderWidth = if (isFocused) 1.2.dp else 0.7.dp
+    val borderWidth = if (isFocused) 1.2.dp else 0.6.dp
 
-    // ── Leading icon colour follows focus, plus a calm pulse during submit.
     val pulseTransition = rememberInfiniteTransition(label = "submit-pulse")
     val pulseAlpha by pulseTransition.animateFloat(
         initialValue = 0.45f,
@@ -98,19 +82,17 @@ fun BeatDropSearchField(
         animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
         label = "pulse-alpha",
     )
-    val iconBase = if (isFocused || value.isNotEmpty()) C.accent else C.textSecondary
+    val iconBase = if (isFocused || value.isNotEmpty()) C.accent else C.text.copy(alpha = 0.60f)
     val iconColor = if (submitting) iconBase.copy(alpha = pulseAlpha) else iconBase
 
-    // Glow halo when focused (accent at 18% alpha, 6.dp soft shadow).
     val glowElevation by animateFloatAsState(
-        targetValue = if (isFocused || submitting) 8f else 0f,
+        targetValue = if (isFocused || submitting) 12f else 0f,
         animationSpec = tween(240),
         label = "glow",
     )
 
     val shape = RoundedCornerShape(radius)
 
-    // Selection colours that match the accent (avoids the Material default blue).
     val selectionColors = TextSelectionColors(
         handleColor = C.accent,
         backgroundColor = C.accent.copy(alpha = 0.30f),
@@ -120,46 +102,32 @@ fun BeatDropSearchField(
         Row(
             modifier = modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .height(52.dp)
                 .shadow(
                     elevation = glowElevation.dp,
                     shape = shape,
                     ambientColor = C.accent,
                     spotColor = C.accent,
                 )
-                .clip(shape)
-                // Solid elevated fill — *not* glassRow. The previous design
-                // sat on a translucent surface which let the page backdrop
-                // bleed through and produced the "white on white" look on
-                // light mode and the smeary icon in dark mode.
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            if (C.isDark) Color(0xFF1A202A).copy(alpha = 0.72f) else Color.White.copy(alpha = 0.78f),
-                            if (C.isDark) Color(0xFF111721).copy(alpha = 0.66f) else Color.White.copy(alpha = 0.68f),
-                        ),
-                    ),
-                )
+                .premiumGlass(level = GlassLevel.Z2_Card, shape = shape)
                 .border(borderWidth, borderColor, shape)
-                .padding(horizontal = 15.dp),
+                .padding(horizontal = 22.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // ── Leading search glyph ─────────────────────────────────────
             Icon(
                 Ic.Search,
                 contentDescription = null,
                 tint = iconColor,
-                modifier = Modifier.size(19.dp),
+                modifier = Modifier.size(18.dp),
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
 
-            // ── Text field + placeholder ─────────────────────────────────
             Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 if (value.isEmpty()) {
                     androidx.compose.material3.Text(
                         text = placeholder,
                         style = Type.body,
-                        color = if (isFocused) C.textTertiary else C.textSecondary,
+                        color = C.text.copy(alpha = 0.45f),
                         fontWeight = FontWeight.Medium,
                     )
                 }
@@ -187,29 +155,25 @@ fun BeatDropSearchField(
                 )
             }
 
-            // ── Trailing: clear (×) and optional submit (→) ──────────────
             if (showClear && value.isNotEmpty()) {
                 Spacer(Modifier.width(8.dp))
                 Box(
                     Modifier
-                        .size(28.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(C.bg2.copy(alpha = 0.45f))
+                        .size(26.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.08f))
                         .pressableScale(onClick = { onChange("") }, scaleTo = 0.85f),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         Ic.Close,
                         contentDescription = "Clear",
-                        tint = C.text,
+                        tint = C.text.copy(alpha = 0.85f),
                         modifier = Modifier.size(14.dp),
                     )
                 }
             }
 
-            // For online search, render a green "submit" pill once the user
-            // has typed something — gives the IME-Search action a visible
-            // counterpart for one-handed thumbs.
             if (onSubmit != null && value.isNotEmpty()) {
                 Spacer(Modifier.width(6.dp))
                 Box(
@@ -221,17 +185,15 @@ fun BeatDropSearchField(
                             onSubmit()
                             keyboard?.hide()
                         }, scaleTo = 0.90f)
-                        .padding(horizontal = 12.dp),
+                        .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.material3.Text(
-                            "Search",
-                            style = Type.caption,
-                            color = Color.Black,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
+                    androidx.compose.material3.Text(
+                        "Search",
+                        style = Type.caption,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
             }
         }
@@ -239,14 +201,8 @@ fun BeatDropSearchField(
 }
 
 /**
- * BeatDropSearchButton — the round 44.dp icon button used in the Discover and
- * Local Discover headers as a shortcut into the full search screen.
- *
- * The previous version used `glassRow` directly which, on light mode, rendered
- * the icon against a near-solid white surface (alpha 0.95 of glassCardElevated
- * = ~0xDDFFFFFF) → invisible icon. This version stacks a solid bg2 underlay
- * (always opaque) under the haze so the icon is guaranteed contrast in every
- * theme.
+ * Round 40 dp icon button — header shortcut to full Search.
+ * Matches the HTML .icon-circle (dark glass, monochrome icon).
  */
 @Composable
 fun BeatDropSearchButton(
@@ -255,22 +211,19 @@ fun BeatDropSearchButton(
     contentDescription: String = "Search",
 ) {
     val C = LocalAppColors.current
-    val shape = RoundedCornerShape(22.dp)
+    val shape = CircleShape
     Box(
         modifier = modifier
-            .size(44.dp)
-            .clip(shape)
-            // Opaque underlay → icon always has contrast even in light theme.
-            .background(C.bg2.copy(alpha = if (C.isDark) 0.55f else 0.85f))
-            .border(1.dp, C.glassCardElevatedBorder, shape)
+            .size(40.dp)
+            .premiumGlass(level = GlassLevel.Z2_Card, shape = shape)
             .pressableScale(onClick = onClick, scaleTo = 0.86f),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             Ic.Search,
             contentDescription = contentDescription,
-            tint = C.text,
-            modifier = Modifier.size(22.dp),
+            tint = C.text.copy(alpha = 0.85f),
+            modifier = Modifier.size(18.dp),
         )
     }
 }

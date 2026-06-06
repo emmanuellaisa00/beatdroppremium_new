@@ -124,7 +124,7 @@ private fun GlassChipT(label: String, selected: Boolean, onClick: () -> Unit) {
                 .clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(label, style = Type.callout, color = Color.Black, fontWeight = FontWeight.SemiBold)
+            Text(label, style = Type.callout, color = Color.White, fontWeight = FontWeight.SemiBold)
         }
     } else {
         Box(

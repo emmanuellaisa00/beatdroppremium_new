@@ -52,7 +52,7 @@ import com.beatdrop.kt.youtube.OnlineResult
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 100% Online Discover Screen — Spotify Glassmorphism Skin
-// Accent: #21FF6B (Spotify Green), glass cards blur 24-32px
+// Accent: #FA2D48 (Apple Music Pink), glass cards blur 24-32px
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -393,12 +393,12 @@ private fun OnlineFeaturedHero(track: OnlineResult, onPlay: () -> Unit, onLongPr
             Text(track.title,  style = Type.title2, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.author, style = Type.callout, color = Color.White.copy(alpha = 0.85f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        // Glass play button with Spotify Green accent
+        // Glass play button with Apple Music Pink accent
         Box(
             Modifier
                 .align(Alignment.BottomEnd).padding(18.dp).size(48.dp)
                 .clip(RoundedCornerShape(24.dp))
-                .background(C.accent.copy(alpha = 0.85f))        // Spotify Green
+                .background(C.accent.copy(alpha = 0.85f))        // Apple Music Pink
                 .drawWithContent {
                     drawContent()
                     drawRect(brush = Brush.verticalGradient(
@@ -501,7 +501,7 @@ private fun OnlineCarousel(title: String, list: List<OnlineResult>, onPlay: (Onl
                                 modifier           = Modifier.fillMaxSize(),
                             )
                         }
-                        // Glass play button with Spotify Green
+                        // Glass play button with Apple Music Pink
                         Box(
                             Modifier
                                 .align(Alignment.BottomEnd).padding(8.dp).size(36.dp)
@@ -684,7 +684,7 @@ private fun LocalCarousel(title: String, list: List<Track>, vm: PlayerViewModel)
                     Box(Modifier.size(150.dp).clip(RoundedCornerShape(Radius.md)).background(C.bg3)) {
                         AsyncImage(model = ImageRequest.Builder(ctx).data(t.artworkUri).crossfade(true).build(),
                             contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                        // Spotify Green play button
+                        // Apple Music Pink play button
                         Box(
                             Modifier
                                 .align(Alignment.BottomEnd).padding(8.dp).size(36.dp)

@@ -385,15 +385,15 @@ fun MainScaffold(vm: PlayerViewModel) {
     val artColor = com.beatdrop.kt.ui.components.rememberArtworkColor(current?.artworkUri)
     val bgColors = if (C.isDark) {
         listOf(
-            artColor.copy(alpha = 0.32f),
-            Color(0xFF0B0B0B),
-            Color(0xFF050505),
+            artColor.copy(alpha = 0.16f),
+            Color(0xFF030305),
+            Color(0xFF000000),
         )
     } else {
         listOf(
-            artColor.copy(alpha = 0.18f),
-            Color(0xFFF8F8FC),
-            Color(0xFFF0EDF5),
+            artColor.copy(alpha = 0.12f),
+            Color(0xFFF7F7F9),
+            Color(0xFFEFEDF2),
         )
     }
 
@@ -454,18 +454,45 @@ fun MainScaffold(vm: PlayerViewModel) {
                 )
             }
 
-            // ── Global translucent glass tint & specular reflection ──────────
+            // ── Global translucent dark scrim + pink ambient glow ────────────
             Box(
                 Modifier
                     .fillMaxSize()
                     .background(
-                        if (C.isDark) Color(0xE9050505)
+                        if (C.isDark) Color(0xF2000000)
                         else Color(0xE8FFFFFF),
                     )
+                    .drawWithContent {
+                        drawContent()
+                        if (C.isDark) {
+                            // Soft Apple-pink ambient (top-left)
+                            drawRect(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        C.accent.copy(alpha = 0.10f),
+                                        Color.Transparent,
+                                    ),
+                                    center = Offset(size.width * 0.15f, size.height * 0.08f),
+                                    radius = size.maxDimension * 0.55f,
+                                ),
+                            )
+                            // Cool navy ambient (bottom-right)
+                            drawRect(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        Color(0xFF2850A0).copy(alpha = 0.07f),
+                                        Color.Transparent,
+                                    ),
+                                    center = Offset(size.width * 0.88f, size.height * 0.88f),
+                                    radius = size.maxDimension * 0.55f,
+                                ),
+                            )
+                        }
+                    }
                     .specularHighlight(
                         tilt,
-                        intensity = if (C.isDark) 0.06f else 0.04f,
-                        radius    = 1000f,
+                        intensity = if (C.isDark) 0.03f else 0.04f,
+                        radius    = 1200f,
                     ),
             )
 

@@ -176,20 +176,20 @@ fun OnlineAlbumScreen(
                         .then(blurMod),
                 )
                 // Vertical dim gradient — blends to a CONSTANT deep
-                // midnight indigo regardless of theme so white foreground
+                // deep black regardless of theme so white foreground
                 // text stays legible in light mode (Spotify/Apple Music
                 // pattern — album/playlist detail is always cinematic-dark).
                 Box(
                     Modifier.fillMaxSize().background(
                         Brush.verticalGradient(
                             0.0f  to Color.Transparent,
-                            0.45f to Color(0xCC0E0A1F),
-                            1.0f  to Color(0xFF0E0A1F),
+                            0.45f to Color(0xCC000000),
+                            1.0f  to Color(0xFF000000),
                         ),
                     ),
                 )
             } else {
-                Box(Modifier.fillMaxSize().background(Color(0xFF0E0A1F)))
+                Box(Modifier.fillMaxSize().background(Color(0xFF000000)))
             }
 
             // ── Foreground content ───────────────────────────────────────
@@ -311,10 +311,10 @@ fun OnlineAlbumScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
                                         Ic.TransportPlay, null,
-                                        tint = Color.Black, modifier = Modifier.size(20.dp),
+                                        tint = Color.White, modifier = Modifier.size(20.dp),
                                     )
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Play", color = Color.Black,
+                                    Text("Play", color = Color.White,
                                         fontSize = 15.sp, fontWeight = FontWeight.Bold)
                                 }
                             }

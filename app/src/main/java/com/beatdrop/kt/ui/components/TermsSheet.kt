@@ -232,7 +232,7 @@ fun TermsSheet(
             ) {
                 Text(
                     "Accept & Continue",
-                    color = Color.Black,
+                    color = Color.White,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                 )

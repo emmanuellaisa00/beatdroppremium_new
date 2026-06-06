@@ -34,7 +34,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.beatdrop.kt.ui.components.GlassLevel
 import com.beatdrop.kt.ui.components.Ic
+import com.beatdrop.kt.ui.components.premiumGlass
 import com.beatdrop.kt.PlayerViewModel
 import com.beatdrop.kt.ui.components.AppleLyrics
 import com.beatdrop.kt.ui.components.TintedGlassButton
@@ -43,11 +45,12 @@ import com.beatdrop.kt.ui.components.rememberArtworkColor
 import com.beatdrop.kt.ui.components.specularHighlight
 import com.beatdrop.kt.ui.theme.LocalAppColors
 import com.beatdrop.kt.ui.theme.Radius
+import com.beatdrop.kt.ui.theme.Spacing
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Spotify Glassmorphism Now Playing Screen
+// BeatDrop Glassmorphism Now Playing Screen
 // Background: #050505 + ambient glow rgba(50,120,255,.18)
-// Accent: #21FF6B (Spotify Green)
+// Accent: #FA2D48 (Apple Music Pink)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @kotlin.OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -143,16 +146,17 @@ fun NowPlayingScreen(
     val dragProgress = (animatedDragOffset / 420f).coerceIn(0f, 1f)
     val tilt = com.beatdrop.kt.ui.components.rememberDeviceTilt()
 
-    // ── Full-screen backdrop — theme-aware deep dark gradient ───────────────
+    // ── Full-screen backdrop — calm radial wash from album color ───────────
     Box(
         Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(
-                    listOf(
-                        artColor.copy(alpha = 0.78f),
-                        if (C.isDark) Color(0xFF050505) else Color(0xFF1A1A2E),
-                    )
+                Brush.radialGradient(
+                    colors = listOf(
+                        artColor.copy(alpha = if (C.isDark) 0.38f else 0.22f),
+                        if (C.isDark) Color(0xFF050507) else Color(0xFFEDEDF2),
+                        if (C.isDark) Color(0xFF000000) else Color(0xFFF7F7F9),
+                    ),
                 )
             )
             .graphicsLayer {
@@ -200,17 +204,17 @@ fun NowPlayingScreen(
                 },
         )
 
-        // Contrast overlay — adapts to theme
+        // Light contrast overlay — keeps art subtle, lets pink ambient breathe
         Box(
             Modifier
                 .fillMaxSize()
                 .background(
-                    if (C.isDark) Color.Black.copy(alpha = 0.35f)
-                    else Color.Black.copy(alpha = 0.50f),
+                    if (C.isDark) Color.Black.copy(alpha = 0.22f)
+                    else Color.White.copy(alpha = 0.45f),
                 )
         )
 
-        // ── Ambient player glow — adapts to theme (spec rule) ────────────────
+        // ── Ambient player glow — soft pink accent ──────────────────────────
         Box(
             Modifier
                 .fillMaxSize()
@@ -219,11 +223,11 @@ fun NowPlayingScreen(
                     drawRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                if (C.isDark) Color(0x2D3278FF) else Color(0x1A9D4EDD),  // dark: blue, light: purple
+                                C.accent.copy(alpha = if (C.isDark) 0.10f else 0.06f),
                                 Color.Transparent,
                             ),
                             center = Offset(size.width * 0.5f, size.height * 0.3f),
-                            radius = size.width * 0.7f,
+                            radius = size.width * 0.8f,
                         ),
                     )
                 },
@@ -362,7 +366,7 @@ fun NowPlayingScreen(
                                 Icon(
                                     Ic.Star,
                                     "Favourite",
-                                    tint     = if (isFav) Color(0xFFFFCC00) else Color.White.copy(alpha = 0.80f),
+                                    tint     = if (isFav) LocalAppColors.current.accent else Color.White.copy(alpha = 0.80f),
                                     modifier = Modifier.size(22.dp),
                                 )
                             }
@@ -440,7 +444,7 @@ fun NowPlayingScreen(
                         Icon(
                             Ic.Star,
                             "Favourite",
-                            tint     = if (isFav) Color(0xFFFFCC00) else Color.White.copy(alpha = 0.85f),
+                            tint     = if (isFav) LocalAppColors.current.accent else Color.White.copy(alpha = 0.85f),
                             modifier = Modifier.size(24.dp),
                         )
                     }
@@ -476,22 +480,11 @@ fun NowPlayingScreen(
 
             Spacer(Modifier.height(6.dp))
 
-            // ── Transport controls — glass capsule with Spotify Green accent ─
+            // ── Transport controls — clean monochrome row, big inset play orb ─
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 4.dp)
-                    .clip(RoundedCornerShape(42.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = if (C.isDark) 0.12f else 0.22f),
-                                Color.White.copy(alpha = if (C.isDark) 0.06f else 0.14f),
-                            ),
-                        ),
-                    )
-                    .border(0.7.dp, Color.White.copy(alpha = if (C.isDark) 0.16f else 0.30f), RoundedCornerShape(42.dp))
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = Spacing.xxl, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment     = Alignment.CenterVertically,
             ) {
@@ -505,32 +498,22 @@ fun NowPlayingScreen(
                         )
                     },
                 ) {
-                    Icon(Ic.SkipPrev, "Previous", tint = Color.White, modifier = Modifier.size(34.dp))
+                    Icon(Ic.SkipPrev, "Previous", tint = C.text.copy(alpha = 0.92f), modifier = Modifier.size(32.dp))
                 }
 
-                // Play / pause — glass circle with green accent
+                // Play / pause — inset glass orb (matches the HTML reference)
                 Box(
                     Modifier
-                        .size(68.dp)
-                        .clip(CircleShape)
-                        .background(C.accent.copy(alpha = 0.25f))       // Green tint glass
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.15f),
-                                    Color.Transparent,
-                                ),
-                            ),
-                        )
-                        .border(1.dp, C.accent.copy(alpha = 0.40f), CircleShape)
+                        .size(76.dp)
+                        .premiumGlass(level = com.beatdrop.kt.ui.components.GlassLevel.Z5_ActiveLens, shape = CircleShape)
                         .pressableScale(onClick = { vm.togglePlay() }),
                     Alignment.Center,
                 ) {
                     Icon(
                         if (isPlaying) Ic.TransportPause else Ic.TransportPlay,
                         "Play/Pause",
-                        tint     = C.accent,         // Spotify Green icon
-                        modifier = Modifier.size(36.dp),
+                        tint     = Color.White,
+                        modifier = Modifier.size(34.dp),
                     )
                 }
 
@@ -544,9 +527,8 @@ fun NowPlayingScreen(
                         )
                     },
                 ) {
-                    Icon(Ic.SkipNext, "Next", tint = Color.White, modifier = Modifier.size(34.dp))
+                    Icon(Ic.SkipNext, "Next", tint = C.text.copy(alpha = 0.92f), modifier = Modifier.size(32.dp))
                 }
-                // Note: During online fetch, next press is handled safely in ViewModel (onlineTransitionInProgress guard)
             }
 
             Spacer(Modifier.height(10.dp))
@@ -716,10 +698,11 @@ fun NowPlayingScreen(
                 Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.verticalGradient(
+                        Brush.radialGradient(
                             listOf(
-                                artColor.copy(alpha = 0.92f),
-                                if (C.isDark) Color(0xFF050505) else Color(0xFF111122),
+                                artColor.copy(alpha = if (C.isDark) 0.32f else 0.18f),
+                                if (C.isDark) Color(0xFF050507) else Color(0xFFEDEDF2),
+                                if (C.isDark) Color(0xFF000000) else Color(0xFFF7F7F9),
                             )
                         )
                     ),

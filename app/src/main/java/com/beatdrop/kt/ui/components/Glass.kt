@@ -2,13 +2,10 @@ package com.beatdrop.kt.ui.components
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.RenderEffect
-import android.graphics.Shader
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Build
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,8 +19,6 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -31,23 +26,11 @@ import com.beatdrop.kt.ui.theme.Blur
 import com.beatdrop.kt.ui.theme.LocalAppColors
 import com.beatdrop.kt.ui.theme.Radius
 
-
 /**
- * App-wide device tilt state. MainScaffold provides one sensor listener for the
- * whole visible app so every glass surface can share the same specular-light
- * vector instead of each MiniPlayer/card/sheet registering its own accelerometer
- * listener.
+ * App-wide device tilt state.
  */
 val LocalDeviceTilt = staticCompositionLocalOf<State<Offset>?> { null }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Device Tilt Sensor — Specular Highlights
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Reads accelerometer to provide tilt-based specular highlight offset.
- * Returns (x, y) in range -1..1 representing device tilt from flat.
- */
 @Composable
 fun rememberDeviceTilt(): State<Offset> {
     LocalDeviceTilt.current?.let { return it }
@@ -73,127 +56,21 @@ fun rememberDeviceTilt(): State<Offset> {
     return tilt
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Backdrop Blur + Saturation Boost
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Self-blur (API 31+). **WARNING**: this is NOT backdrop blur — it blurs
- * the element AND its children. Use [com.beatdrop.kt.ui.components.hazeGlass]
- * for real backdrop-blur. Kept for compatibility with surfaces that have
- * no child content (e.g. ambient overlays), but glass cards / rows /
- * headers / sheets MUST NOT use this — text and icons get smeared.
- */
 @SuppressLint("NewApi")
-fun Modifier.glassBlur(radiusPx: Float = 36f): Modifier =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        this.graphicsLayer {
-            renderEffect = RenderEffect.createChainEffect(
-                RenderEffect.createColorFilterEffect(
-                    android.graphics.ColorMatrixColorFilter(
-                        android.graphics.ColorMatrix().apply { setSaturation(1.8f) }
-                    )
-                ),
-                RenderEffect.createBlurEffect(radiusPx, radiusPx, Shader.TileMode.CLAMP),
-            ).asComposeRenderEffect()
-        }
-    } else this
+fun Modifier.glassBlur(@Suppress("UNUSED_PARAMETER") radiusPx: Float = 36f): Modifier = this
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Master Glass Surface Modifier
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Master glass surface — applies the full rendering stack:
- *
- *   Shadow Layer
- *   ↓ Ambient Glow Layer
- *   ↓ Glass Surface
- *   ↓ Backdrop Blur (API 31+)
- *   ↓ Noise Texture
- *   ↓ Reflection Layer
- *   ↓ Content Layer
- *
- * Usage:
- *   .masterGlass(radius = Radius.lg, blur = Blur.medium, tintAlpha = 0.12f)
- */
 @SuppressLint("NewApi")
 @Composable
 fun Modifier.masterGlass(
     radius: Dp = Radius.lg,
-    blur: Float = 36f,
-    tintAlpha: Float = 0.08f,
-    borderAlpha: Float = 0.12f,
-): Modifier {
-    val C = LocalAppColors.current
-    return this
-        // ── Glass Surface (gradient fill) ──────────────────────────────────
-        .background(
-            Brush.verticalGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = tintAlpha + 0.04f),
-                    Color.White.copy(alpha = tintAlpha * 0.25f),
-                ),
-                startY = 0f,
-                endY = Float.POSITIVE_INFINITY,
-            )
-        )
-        // NOTE: Backdrop blur is intentionally NOT applied here. Compose's
-        // RenderEffect blurs the element AND its children, which smears
-        // text/icons. Real backdrop blur lives in `Modifier.hazeGlass(...)`;
-        // call it on the parent surface BEFORE content is composed in.
-        // ── Noise (organic / premium) ──────────────────────────────────────
-        .noiseOverlay(opacity = 0.03f)
-        // ── Top Reflection (Fresnel rim light) ─────────────────────────────
-        .drawWithContent {
-            drawContent()
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        C.glassHighlight.copy(alpha = if (C.isDark) 0.12f else 0.22f),
-                        Color.Transparent,
-                    ),
-                    startY = 0f,
-                    endY = size.height * 0.35f,
-                ),
-            )
-        }
-        // ── Bottom Inner Shadow (depth/thickness) ──────────────────────────
-        .drawWithContent {
-            drawContent()
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        C.glassInnerShadow.copy(alpha = 0.06f),
-                    ),
-                    startY = size.height * 0.65f,
-                    endY = size.height,
-                ),
-            )
-        }
-        // ── Specular Highlight (device tilt) ───────────────────────────────
-        .specularHighlight(
-            rememberDeviceTilt(),
-            intensity = 0.12f,
-            radius = 280f,
-        )
-        // ── Hairline Border ────────────────────────────────────────────────
-        .border(
-            1.dp,
-            Color.White.copy(alpha = borderAlpha),
-            RoundedCornerShape(radius),
-        )
-}
+    @Suppress("UNUSED_PARAMETER") blur: Float = 36f,
+    @Suppress("UNUSED_PARAMETER") tintAlpha: Float = 0.08f,
+    @Suppress("UNUSED_PARAMETER") borderAlpha: Float = 0.12f,
+): Modifier = this.premiumGlass(
+    level = GlassLevel.Z2_Card,
+    shape = RoundedCornerShape(radius),
+)
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Specular Highlight — Device Tilt Responsive
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Draws a moving specular highlight responding to device tilt.
- * Simulates light traveling across the glass surface.
- */
 @Composable
 fun Modifier.specularHighlight(
     tilt: State<Offset>,
@@ -223,14 +100,6 @@ fun Modifier.specularHighlight(
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Rim Light — Fresnel Top-Edge Highlight
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Draws a subtle top-edge rim light — simulates light catching the glass edge.
- * Without this, glass looks paper-thin.
- */
 @Composable
 fun Modifier.rimLight(cornerRadius: Dp = Radius.lg): Modifier {
     val C = LocalAppColors.current
@@ -239,7 +108,7 @@ fun Modifier.rimLight(cornerRadius: Dp = Radius.lg): Modifier {
         drawRect(
             brush = Brush.verticalGradient(
                 colors = listOf(
-                    C.glassRimLight.copy(alpha = if (C.isDark) 0.16f else 0.30f),
+                    Color.White.copy(alpha = if (C.isDark) 0.10f else 0.30f),
                     Color.Transparent,
                 ),
                 startY = 0f,
@@ -249,14 +118,6 @@ fun Modifier.rimLight(cornerRadius: Dp = Radius.lg): Modifier {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Inner Glow — Bottom-Edge Soft Glow
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Draws a subtle bottom-edge inner glow for depth perception.
- * Gives glass a sense of thickness and dimensionality.
- */
 @Composable
 fun Modifier.innerGlow(): Modifier {
     val C = LocalAppColors.current
@@ -266,7 +127,7 @@ fun Modifier.innerGlow(): Modifier {
             brush = Brush.verticalGradient(
                 colors = listOf(
                     Color.Transparent,
-                    C.glassInnerShadow.copy(alpha = if (C.isDark) 0.06f else 0.04f),
+                    Color.Black.copy(alpha = if (C.isDark) 0.25f else 0.08f),
                 ),
                 startY = size.height * 0.7f,
                 endY = size.height,
@@ -275,14 +136,9 @@ fun Modifier.innerGlow(): Modifier {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Tinted Glass Button — Accent Color Glass Material
-// ═══════════════════════════════════════════════════════════════════════════════
-
 /**
- * A tinted glass button — accent color rendered as translucent glass material.
- * Use selectively for primary actions/CTAs only.
- * Accent: #21FF6B (Spotify Green)
+ * Tinted glass button — accent pink rendered as soft glass.
+ * Used selectively for primary CTAs.
  */
 @Composable
 fun TintedGlassButton(
@@ -295,129 +151,46 @@ fun TintedGlassButton(
     Box(
         modifier
             .clip(shape)
-            .background(tintColor.copy(alpha = 0.55f))
+            .background(tintColor.copy(alpha = 0.92f))
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.22f),
+                        Color.White.copy(alpha = 0.20f),
                         Color.Transparent,
                     )
                 )
             )
-            .border(0.6.dp, tintColor.copy(alpha = 0.40f), shape),
+            .border(0.6.dp, Color.White.copy(alpha = 0.20f), shape),
         contentAlignment = Alignment.Center,
     ) { content() }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Glass Card — For album cards, grid items, carousel items
-// ═══════════════════════════════════════════════════════════════════════════════
-
 /**
- * Glass card for album grids, recommendation rows, etc.
- * Blur: 24-32px (blur budget for 60fps)
- *
- * Renders the full stack per spec §2:
- *   Shadow → Surface → Blur → Noise → Reflection → Inner shadow → Border.
- */
-/**
- * Glass card for hero blocks, album/artist art frames, mix tiles, dialog
- * surfaces. Default blur 16 dp — strong enough to read as "frosted" but
- * gentle enough that 16–22 sp titles laid on top stay crisp. The tint
- * carries the body of the surface.
+ * Glass card — shim to premiumGlass(Z2_Card).
  */
 @SuppressLint("NewApi")
 @Composable
 fun Modifier.glassCard(
-    radius: Dp = Radius.md,
+    radius: Dp = Radius.lg,
     @Suppress("UNUSED_PARAMETER") blur: Float = Blur.light,
-): Modifier {
-    // ── DELEGATES TO premiumGlass(Z2_Card) ───────────────────────────
-    // Per Premium Glass spec: 'The entire UI uses one material. Never
-    // create different glass styles.' The old bespoke glassCard stack
-    // (haze + tint + drawWithContent + border + glassShadow) diverged
-    // from the unified material over time.
-    //
-    // To migrate all 18 call-site screens in a single move WITHOUT
-    // touching each file (which would be 18 risky commits), glassCard
-    // now thunks through to premiumGlass(Z2_Card). The 'blur' param is
-    // accepted-but-ignored — call sites that passed Blur.medium etc.
-    // still compile, and the unified material chooses the spec-correct
-    // blur for the Z2 level (20dp).
-    //
-    // When migrating individual screens, prefer calling premiumGlass()
-    // directly. This shim exists to avoid churn.
-    return this.premiumGlass(level = GlassLevel.Z2_Card, shape = RoundedCornerShape(radius))
-}
+): Modifier = this.premiumGlass(level = GlassLevel.Z2_Card, shape = RoundedCornerShape(radius))
 
 /**
- * Glass row — list-row variant of glassCard with smaller radius/blur,
- * tuned for 60fps in long LazyColumns.
- */
-/**
- * Glass row — list-row variant of glassCard tuned for dense small-text
- * surfaces (Search results, Trending, Discover rows, Library tracks).
- *
- * Default blur is intentionally low (Blur.subtle = 8 dp). Anything larger
- * smears 13–14 sp body text into a fog. The substantial tint (alpha 0.95)
- * does most of the visual work; the blur is a hint, not a wash.
+ * Glass row — shim to premiumGlass(Z1_List).
  */
 @SuppressLint("NewApi")
 @Composable
 fun Modifier.glassRow(
-    radius: Dp = Radius.sm,
+    radius: Dp = Radius.md,
     @Suppress("UNUSED_PARAMETER") blur: Float = Blur.subtle,
-): Modifier {
-    // ── DELEGATES TO premiumGlass(Z1_List) ───────────────────────────
-    // See glassCard's comment above — same migration strategy: one
-    // material everywhere, call sites unchanged. Z1_List uses the
-    // smallest blur (6dp) appropriate for dense small-text rows in
-    // long LazyColumns; 60fps friendly.
-    return this.premiumGlass(level = GlassLevel.Z1_List, shape = RoundedCornerShape(radius))
-}
+): Modifier = this.premiumGlass(level = GlassLevel.Z1_List, shape = RoundedCornerShape(radius))
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Glass Sheet — For bottom sheets, modals
-// Blur: 60px (spec rule)
-// ═══════════════════════════════════════════════════════════════════════════════
-
+/**
+ * Glass sheet — modal background.
+ */
 @SuppressLint("NewApi")
 @Composable
-fun Modifier.glassSheet(radius: Dp = Radius.lg): Modifier {
-    val C = LocalAppColors.current
-    val shape = RoundedCornerShape(radius)
-    return this
-        .clip(shape)
-        .hazeGlass(shape = shape, tintColor = C.glassModal, blurRadius = 60.dp)
-        .background(C.glassModal)
-        .noiseOverlay(opacity = 0.03f)
-        .drawWithContent {
-            drawContent()
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        C.glassHighlight.copy(alpha = 0.15f),
-                        Color.Transparent,
-                    ),
-                    startY = 0f,
-                    endY = size.height * 0.30f,
-                ),
-            )
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        C.glassInnerShadow.copy(alpha = 0.04f),
-                    ),
-                    startY = size.height * 0.70f,
-                    endY = size.height,
-                ),
-            )
-        }
-        .specularHighlight(
-            rememberDeviceTilt(),
-            intensity = 0.08f,
-            radius = 400f,
-        )
-        .border(1.dp, C.glassModalBorder, RoundedCornerShape(radius))
-}
+fun Modifier.glassSheet(radius: Dp = Radius.xl): Modifier = this.premiumGlass(
+    level = GlassLevel.Z6_Floating,
+    shape = RoundedCornerShape(topStart = radius, topEnd = radius, bottomStart = 0.dp, bottomEnd = 0.dp),
+)

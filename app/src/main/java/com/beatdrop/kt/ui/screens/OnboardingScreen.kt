@@ -18,181 +18,180 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.beatdrop.kt.ui.components.GlassLevel
 import com.beatdrop.kt.ui.components.Ic
-import com.beatdrop.kt.ui.components.glassCard
+import com.beatdrop.kt.ui.components.ScreenScaffold
+import com.beatdrop.kt.ui.components.premiumGlass
 import com.beatdrop.kt.ui.components.pressableScale
 import com.beatdrop.kt.ui.theme.LocalAppColors
-import com.beatdrop.kt.ui.theme.Radius
+import com.beatdrop.kt.ui.theme.Spacing
 
 @Composable
 fun OnboardingScreen(onGetStarted: () -> Unit) {
     val C = LocalAppColors.current
-    // Same indigo backdrop as the SplashScreen + system splash so the
-    // user lands here in a colour space they've already been seeing for
-    // ~700 ms. Replaces the previous purple/pink palette which clashed
-    // with the new Ocean-Teal accent + Cascade-Drop logo identity.
-    val bgStops = if (C.isDark) listOf(
-        Color(0xFF090A0D),   // top — concept black ladder
-        Color(0xFF050505),   // mid
-        Color(0xFF030303),   // bottom — deepest
-    ) else listOf(
-        Color(0xFFE8F4FB),   // top — pale teal wash
-        Color(0xFFF5F8FA),   // mid
-        Color(0xFFFAFAFD),   // bottom — near white
-    )
-    Box(
-        Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(bgStops))
-    ) {
+
+    ScreenScaffold(ambientIntensity = 0.18f) {
         Column(
-            Modifier.fillMaxSize()
+            Modifier
+                .fillMaxSize()
                 .statusBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
+                .padding(horizontal = Spacing.xxl, vertical = Spacing.lg),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(40.dp))
 
-            // Logo with glow effect
+            // Logo — soft pink glass disc with monochrome glyph
             Box(
                 Modifier
-                    .size(112.dp)
+                    .size(108.dp)
                     .shadow(
-                        elevation = 24.dp,
+                        elevation = 30.dp,
                         shape = CircleShape,
-                        ambientColor = Color(0xFF7B2CBF).copy(alpha = 0.5f),
-                        spotColor = Color(0xFFC77DFF).copy(alpha = 0.6f)
+                        ambientColor = C.accent.copy(alpha = 0.55f),
+                        spotColor = C.accent.copy(alpha = 0.45f),
                     )
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(
                             listOf(
-                                Color(0xFFC77DFF),
-                                Color(0xFF7B2CBF),
-                                Color(0xFF3D1259),
+                                C.accent,
+                                C.accentDark,
+                                Color(0xFF4A0F1A),
                             )
                         )
                     )
-                    .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape),
+                    .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Ic.MusicNote,
                     null,
                     tint = Color.White,
-                    modifier = Modifier.size(56.dp)
+                    modifier = Modifier.size(48.dp)
                 )
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
 
-            // Title
             Text(
                 "BeatDrop",
-                fontSize = 38.sp,
-                fontWeight = FontWeight.Black,
-                color = if (C.isDark) Color.White else Color(0xFF101018),
+                fontSize = 36.sp,
+                fontWeight = FontWeight.Bold,
+                color = C.text,
                 textAlign = TextAlign.Center,
                 letterSpacing = (-1).sp,
             )
 
+            Spacer(Modifier.height(6.dp))
+
             Text(
                 "Your music, beautifully played.",
-                color = if (C.isDark) Color(0xFFD4B0FF) else C.accentDark,
-                fontSize = 16.sp,
+                color = C.text.copy(alpha = 0.60f),
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(36.dp))
 
-            // Feature list with cards
-            FeatureCard(Ic.MusicNote, "Your Local Library", "Instantly plays every song already on your phone.", Color(0xFFC77DFF), C.isDark)
+            // Feature list — monochrome glass cards
+            FeatureCard(Ic.MusicNote, "Your Local Library", "Instantly plays every song already on your phone.")
             Spacer(Modifier.height(10.dp))
-            FeatureCard(Ic.Lyrics, "Synced Lyrics", "Drop a .lrc file next to a track and sing along in real-time.", Color(0xFF0A84FF), C.isDark)
+            FeatureCard(Ic.Lyrics, "Synced Lyrics", "Drop a .lrc file next to a track and sing along in real time.")
             Spacer(Modifier.height(10.dp))
-            FeatureCard(Ic.Playlist, "Playlists & Queue", "Create playlists, reorder your queue, and manage your music.", Color(0xFF30D158), C.isDark)
+            FeatureCard(Ic.Playlist, "Playlists & Queue", "Create playlists, reorder your queue, manage your music.")
             Spacer(Modifier.height(10.dp))
-            FeatureCard(Ic.Sparkles, "Auto-Mix", "Smart crossfade between tracks — matches BPM, key, and your taste.", Color(0xFFFF9F0A), C.isDark)
+            FeatureCard(Ic.Sparkles, "Auto-Mix", "Smart crossfade between tracks — matches BPM, key, and your taste.")
 
             Spacer(Modifier.weight(1f))
 
-            // CTA Button
+            // CTA — solid Apple-Music pink pill
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
+                    .height(56.dp)
                     .shadow(
-                        elevation = 12.dp,
-                        shape = RoundedCornerShape(16.dp),
-                        ambientColor = C.accent.copy(alpha = 0.4f),
-                        spotColor = C.accent.copy(alpha = 0.3f),
+                        elevation = 16.dp,
+                        shape = RoundedCornerShape(28.dp),
+                        ambientColor = C.accent.copy(alpha = 0.55f),
+                        spotColor = C.accent.copy(alpha = 0.40f),
                     )
-                    // CTA matches the in-app accent (Ocean Teal) so the
-                    // first thing the user taps uses the same colour as
-                    // every other 'primary action' in the app.
-                    .background(C.accent)
-                    .border(0.8.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
-                    .pressableScale(onClick = onGetStarted, haptic = false)
-                    .padding(vertical = 18.dp),
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(C.accent, C.accentDark),
+                        )
+                    )
+                    .border(0.6.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(28.dp))
+                    .pressableScale(onClick = onGetStarted, scaleTo = 0.96f),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     "Get Started",
-                    color = Color.Black,
+                    color = Color.White,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    letterSpacing = 0.5.sp
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(20.dp))
 
             Text(
-                "BeatDrop reads audio on your device.\nNo account, no uploads, no tracking.",
-                color = if (C.isDark) Color(0xFF8A8A9A) else Color(0x7F101018),
+                "We'll ask for permission to your music in the next step.",
+                color = C.text.copy(alpha = 0.45f),
                 fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp)
             )
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
 
 @Composable
-private fun FeatureCard(icon: ImageVector, title: String, body: String, accent: Color, isDark: Boolean) {
+private fun FeatureCard(
+    icon: ImageVector,
+    title: String,
+    body: String,
+) {
+    val C = LocalAppColors.current
     Row(
         Modifier
             .fillMaxWidth()
-            .glassCard(radius = Radius.md)
-            .padding(14.dp),
+            .premiumGlass(level = GlassLevel.Z2_Card, shape = RoundedCornerShape(22.dp))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(accent.copy(alpha = 0.18f)),
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.05f))
+                .border(0.5.dp, Color.White.copy(alpha = 0.10f), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, null, tint = accent, modifier = Modifier.size(24.dp))
+            Icon(
+                icon, null,
+                tint = C.text.copy(alpha = 0.85f),
+                modifier = Modifier.size(18.dp),
+            )
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 title,
-                color = if (isDark) Color.White else Color(0xFF101018),
+                color = C.text,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 15.sp
             )
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(2.dp))
             Text(
                 body,
-                color = if (isDark) Color(0xFFA9A9BC) else Color(0xBF101018),
-                fontSize = 13.sp,
-                lineHeight = 18.sp
+                color = C.text.copy(alpha = 0.55f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal,
             )
         }
     }

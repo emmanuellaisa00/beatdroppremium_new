@@ -174,7 +174,7 @@ fun WhatsNewSheet(
                 Text(
                     "Got it",
                     style = Type.headline,
-                    color = Color.Black,
+                    color = Color.White,
                     fontWeight = FontWeight.Bold,
                 )
             }

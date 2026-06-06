@@ -188,7 +188,7 @@ private fun GlassChip(label: String, selected: Boolean, onClick: () -> Unit) {
         ) {
             Text(
                 label, style = Type.callout,
-                color = androidx.compose.ui.graphics.Color.Black,
+                color = androidx.compose.ui.graphics.Color.White,
                 fontWeight = FontWeight.SemiBold,
             )
         }

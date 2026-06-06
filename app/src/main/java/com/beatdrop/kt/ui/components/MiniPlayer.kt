@@ -8,7 +8,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.beatdrop.kt.ui.components.Ic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -16,9 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -32,15 +28,17 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.beatdrop.kt.data.Track
 import com.beatdrop.kt.ui.theme.LocalAppColors
-import com.beatdrop.kt.ui.theme.Radius
 import kotlin.math.abs
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Spotify Glassmorphism Mini Player
-// Spec: blur(50px) — higher than nav for elevation, outer radius=44dp
-// accent=#21FF6B (Spotify Green)
-// ═══════════════════════════════════════════════════════════════════════════════
-
+/**
+ * BeatDrop Mini Player — matches the HTML concept exactly:
+ *   • 70 dp tall, radius 36, dark obsidian glass (same recipe as the dock)
+ *   • Floats 14 dp above the dock, 20 dp horizontal insets
+ *   • Circular album thumb on the left
+ *   • Title (white) + artist (55% white) center
+ *   • Devices/cast icon + plain white play triangle (no background fill)
+ *   • Hairline pink progress line at the bottom edge
+ */
 @Composable
 fun MiniPlayer(
     track: Track,
@@ -53,66 +51,24 @@ fun MiniPlayer(
 ) {
     val C = LocalAppColors.current
     val ctx = LocalContext.current
-    val tilt = rememberDeviceTilt()
 
     var dragX by remember { mutableStateOf(0f) }
     var dragY by remember { mutableStateOf(0f) }
     val animX by animateFloatAsState(dragX, label = "miniX")
     val animY by animateFloatAsState(dragY.coerceAtMost(0f), label = "miniY")
 
-    // Concept target: floating iOS-style glass capsule sitting above the dock.
-    // Larger art, calmer controls, no handle, stronger rim, and real backdrop
-    // blur from the global HazeState provided by MainScaffold.
-    val outerRadius = 34.dp
-    val outerShape  = RoundedCornerShape(outerRadius)
-    val artShape    = CircleShape
+    val outerShape = RoundedCornerShape(36.dp)
 
     Box(
         Modifier
             .fillMaxWidth()
             .height(70.dp)
-            .padding(horizontal = 18.dp)
+            .padding(horizontal = 20.dp)
             .graphicsLayer {
                 translationX = animX
                 translationY = animY
-                shape = outerShape
-                clip = false
             }
-            // Background-only glass. Do NOT use haze/premiumGlass on the
-            // content container here: on some devices Haze draws above child
-            // composables, turning the MiniPlayer into an empty black pill.
-            .shadow(
-                elevation = 24.dp,
-                shape = outerShape,
-                ambientColor = Color.Black.copy(alpha = 0.55f),
-                spotColor = Color.Black.copy(alpha = 0.45f),
-            )
-            .clip(outerShape)
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF232832).copy(alpha = if (C.isDark) 0.78f else 0.82f),
-                        Color(0xFF11141A).copy(alpha = if (C.isDark) 0.70f else 0.78f),
-                    ),
-                ),
-            )
-            .border(0.8.dp, Color.White.copy(alpha = if (C.isDark) 0.18f else 0.28f), outerShape)
-            // Blue refraction on the left edge, matching the uploaded concept's
-            // cool smoked-glass MiniPlayer.
-            .drawWithContent {
-                drawContent()
-                drawRect(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            Color(0xFF5B8CFF).copy(alpha = if (C.isDark) 0.08f else 0.10f),
-                            Color.Transparent,
-                        ),
-                        startX = 0f,
-                        endX = size.width * 0.46f,
-                    ),
-                )
-            }
-            .specularHighlight(tilt, intensity = if (C.isDark) 0.10f else 0.07f, radius = 240f)
+            .premiumGlass(level = GlassLevel.Z3_MiniPlayer, shape = outerShape)
             .pointerInput(track.id) {
                 detectDragGestures(
                     onDragEnd = {
@@ -135,48 +91,40 @@ fun MiniPlayer(
         Row(
             Modifier
                 .fillMaxSize()
-                .padding(start = 10.dp, end = 10.dp),
+                .padding(start = 8.dp, end = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Artwork inset: rounded jewel under the glass surface.
+            // Album art — circular
             Box(
                 Modifier
-                    .size(50.dp)
-                    .border(1.dp, Color.Black.copy(alpha = 0.42f), artShape)
-                    .clip(artShape)
-                    .background(C.bg3),
+                    .size(54.dp)
+                    .clip(CircleShape)
+                    .background(C.bg3)
+                    .border(1.dp, Color.White.copy(alpha = 0.10f), CircleShape),
+                contentAlignment = Alignment.Center,
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(ctx)
-                        .data(track.artworkUri)
-                        .crossfade(true)
-                        .size(coil.size.Size(140, 140))
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                Box(
-                    Modifier
-                        .matchParentSize()
-                        .border(0.6.dp, Color.White.copy(alpha = 0.18f), artShape)
-                        .drawWithContent {
-                            drawContent()
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.White.copy(alpha = 0.08f),
-                                        Color.Transparent,
-                                    ),
-                                    startY = 0f,
-                                    endY = size.height * 0.42f,
-                                ),
-                            )
-                        },
-                )
+                if (track.artworkUri != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(ctx)
+                            .data(track.artworkUri)
+                            .crossfade(true)
+                            .size(coil.size.Size(140, 140))
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Icon(
+                        imageVector = Ic.MusicNote,
+                        contentDescription = null,
+                        tint = C.text.copy(alpha = 0.55f),
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
             }
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
 
             Column(Modifier.weight(1f)) {
                 Text(
@@ -190,63 +138,42 @@ fun MiniPlayer(
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = track.artist,
-                    color = C.textSecondary,
-                    fontSize = 12.sp,
+                    color = C.text.copy(alpha = 0.55f),
+                    fontSize = 11.5.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
 
-            IconButton(onClick = onExpand) {
+            // Devices/cast icon — subtle, monochrome
+            IconButton(onClick = onExpand, modifier = Modifier.size(38.dp)) {
                 Icon(
                     imageVector = Ic.Airplay,
                     contentDescription = null,
-                    tint = C.textSecondary,
-                    modifier = Modifier.size(23.dp),
+                    tint = C.text.copy(alpha = 0.75f),
+                    modifier = Modifier.size(20.dp),
                 )
             }
 
-            IconButton(onClick = onToggle, modifier = Modifier.size(48.dp)) {
-                Box(
-                    Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(Color.White.copy(alpha = if (C.isDark) 0.92f else 0.96f))
-                        .drawWithContent {
-                            drawContent()
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.White.copy(alpha = 0.55f),
-                                        Color.Transparent,
-                                    ),
-                                    startY = 0f,
-                                    endY = size.height * 0.5f,
-                                ),
-                            )
-                        }
-                        .border(0.7.dp, Color.White.copy(alpha = 0.36f), RoundedCornerShape(22.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = if (isPlaying) Ic.TransportPause else Ic.TransportPlay,
-                        contentDescription = null,
-                        tint = Color.Black.copy(alpha = 0.88f),
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
+            // Play button — pure white triangle, NO background fill
+            IconButton(onClick = onToggle, modifier = Modifier.size(42.dp)) {
+                Icon(
+                    imageVector = if (isPlaying) Ic.TransportPause else Ic.TransportPlay,
+                    contentDescription = null,
+                    tint = C.text,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
 
-        // Ultra-subtle progress: visible enough to be useful, but not a hard
-        // Material line through the glass capsule.
+        // Hairline progress at the bottom — subtle pink accent
         Box(
             Modifier
                 .align(Alignment.BottomStart)
-                .padding(horizontal = 28.dp)
+                .padding(horizontal = 36.dp)
                 .fillMaxWidth(progress.coerceIn(0f, 1f))
                 .height(1.5.dp)
-                .background(C.accent.copy(alpha = 0.70f))
+                .background(C.accent.copy(alpha = 0.75f))
         )
     }
 }

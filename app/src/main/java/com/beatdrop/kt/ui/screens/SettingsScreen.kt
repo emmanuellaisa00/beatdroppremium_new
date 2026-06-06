@@ -231,7 +231,7 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit, onOpenEq: () -> Unit
                 ) {
                     val isValidUrl = backendText.isBlank() || backendText.matches(Regex("https?://.*"))
                     if (!isValidUrl && backendText.isNotBlank()) {
-                        Text("URL must start with http:// or https://", color = Color(0xFFE53935), fontSize = 11.sp)
+                        Text("URL must start with http:// or https://", color = LocalAppColors.current.accent, fontSize = 11.sp)
                     }
                     GlassChip("Save", isValidUrl && backendText != resolverBackend) {
                         if (isValidUrl) vm.setResolverBackend(backendText)

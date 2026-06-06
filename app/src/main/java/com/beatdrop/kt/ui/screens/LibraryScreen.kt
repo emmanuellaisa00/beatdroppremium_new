@@ -35,9 +35,11 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.beatdrop.kt.ui.components.BeatDropSearchField
+import com.beatdrop.kt.ui.components.GlassLevel
 import com.beatdrop.kt.ui.components.Ic
 import com.beatdrop.kt.ui.components.ScreenScaffold
 import com.beatdrop.kt.ui.components.glassRow
+import com.beatdrop.kt.ui.components.premiumGlass
 import com.beatdrop.kt.PlayerViewModel
 import com.beatdrop.kt.data.Track
 import com.beatdrop.kt.data.SortMode
@@ -50,9 +52,9 @@ import com.beatdrop.kt.ui.theme.Type
 private enum class LibTab(val label: String) { SONGS("Songs"), ALBUMS("Albums"), ARTISTS("Artists") }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Spotify Glassmorphism Library Screen
-// Logo: "BeatDrop" with accent green (#21FF6B)
-// Glass search bar, glass segmented control
+// BeatDrop Library — Premium Frosted Glass (matches HTML concept)
+// Wordmark on top, monochrome icons, dark obsidian glass everywhere,
+// inset glass active tab. Pink accent only for focus / progress / CTAs.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -74,72 +76,68 @@ fun LibraryScreen(
 
     ScreenScaffold {
     Column(Modifier.fillMaxSize()) {
-        // ── Top bar: "BeatDrop" logo with accent green ──────────────────────
+        // ── Top bar: "BeatDrop" wordmark + circular monochrome glass icons ─
         Row(
             Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(start = Spacing.lg, end = 4.dp, top = 10.dp, bottom = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(start = Spacing.xxl, end = Spacing.lg, top = 12.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.Bottom,
         ) {
-            // "Beat" in accent green, "Drop" in text color
-            Row(Modifier.weight(1f)) {
-                Text("Beat", style = Type.largeTitle, color = C.accent)   // Spotify Green
-                Text("Drop", style = Type.largeTitle, color = C.text)
+            Column(Modifier.weight(1f)) {
+                Text("BeatDrop", style = Type.title1, color = C.text, fontWeight = FontWeight.Bold)
+                Text("Your music everywhere", style = Type.caption, color = C.text.copy(alpha = 0.50f))
             }
+            Spacer(Modifier.width(Spacing.sm))
             HeaderIcon(Ic.Playlist, "Playlists", onOpenPlaylists)
+            Spacer(Modifier.width(8.dp))
             HeaderIcon(Ic.Download, "Downloads", onOpenDownloads)
+            Spacer(Modifier.width(8.dp))
             HeaderIcon(Ic.Settings, "Settings",  onOpenSettings)
         }
 
-        // ── Search field — unified BeatDropSearchField ─────────────────────
-        // Replaces the legacy inline glassRow + BasicSearchField pair. The
-        // shared component guarantees a solid (non-translucent) fill, a
-        // textSecondary placeholder (not the washed-out textTertiary), and
-        // an accent focus state — fixing the "everything is white" report.
-        Box(Modifier.padding(horizontal = Spacing.lg, vertical = 8.dp)) {
+        // ── Search field ─────────────────────────────────────────────────
+        Box(Modifier.padding(horizontal = Spacing.xxl, vertical = Spacing.md)) {
             BeatDropSearchField(
                 value = query,
                 onChange = vm::setQuery,
-                placeholder = "Search your library",
-                onSubmit = null,            // live-filter, no submit affordance
+                placeholder = "Search songs, albums, artists",
+                onSubmit = null,
             )
         }
 
-        // ── Segmented control — glass pill style with green active ──────────
-        Row(
+        // ── Segmented control — dark glass pill with inset glass active orb ─
+        Box(
             Modifier
-                .padding(horizontal = Spacing.lg, vertical = 8.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(C.glassCardElevated)
-                .border(0.5.dp, C.glassCardElevatedBorder, RoundedCornerShape(14.dp))
-                .padding(3.dp)
-                .fillMaxWidth(),
+                .padding(horizontal = Spacing.xxl, vertical = Spacing.md)
+                .fillMaxWidth()
+                .height(48.dp)
+                .premiumGlass(level = com.beatdrop.kt.ui.components.GlassLevel.Z2_Card, shape = RoundedCornerShape(24.dp))
+                .padding(5.dp),
         ) {
-            LibTab.values().forEach { t ->
-                val active = t == tab
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            if (active) C.accent.copy(alpha = 0.30f)      // Spotify Green active bg
-                            else Color.Transparent
+            Row(Modifier.fillMaxSize()) {
+                LibTab.values().forEach { t ->
+                    val active = t == tab
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .then(
+                                if (active) Modifier.premiumGlass(
+                                    level = com.beatdrop.kt.ui.components.GlassLevel.Z5_ActiveLens,
+                                    shape = RoundedCornerShape(20.dp),
+                                ) else Modifier
+                            )
+                            .pressableScale(onClick = { tab = t }, scaleTo = 0.97f),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            t.label,
+                            style  = Type.callout,
+                            color  = if (active) C.text else C.text.copy(alpha = 0.55f),
+                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
                         )
-                        .then(
-                            if (active) Modifier.border(0.5.dp, C.accent.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
-                            else Modifier
-                        )
-                        .pressableScale(onClick = { tab = t }, scaleTo = 0.97f)
-                        .padding(vertical = 9.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        t.label,
-                        style  = Type.callout,
-                        color  = if (active) C.accent else C.textSecondary,
-                        fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                    )
+                    }
                 }
             }
         }
@@ -167,14 +165,11 @@ private fun HeaderIcon(
     Box(
         Modifier
             .size(40.dp)
-            .shadow(6.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.18f), spotColor = Color.Black.copy(alpha = 0.12f))
-            .clip(CircleShape)
-            .background(if (C.isDark) Color.White.copy(alpha = 0.075f) else Color.Black.copy(alpha = 0.045f))
-            .border(0.6.dp, Color.White.copy(alpha = if (C.isDark) 0.12f else 0.26f), CircleShape)
+            .premiumGlass(level = com.beatdrop.kt.ui.components.GlassLevel.Z2_Card, shape = CircleShape)
             .pressableScale(onClick = onClick, scaleTo = 0.85f),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, desc, tint = C.textSecondary.copy(alpha = 0.92f), modifier = Modifier.size(21.dp))
+        Icon(icon, desc, tint = C.text.copy(alpha = 0.85f), modifier = Modifier.size(18.dp))
     }
 }
 

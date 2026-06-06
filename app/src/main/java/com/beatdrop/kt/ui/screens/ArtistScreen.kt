@@ -68,7 +68,7 @@ fun ArtistScreen(vm: PlayerViewModel, artistName: String, onBack: () -> Unit) {
                                 .size(112.dp)
                                 .glassShadow(elevation = 20.dp, shape = CircleShape, isDark = C.isDark)
                                 .clip(CircleShape)
-                                .background(Brush.linearGradient(listOf(C.accent, C.purple)))
+                                .background(Brush.linearGradient(listOf(C.accent, C.accentDark)))
                                 .drawWithContent {
                                     drawContent()
                                     // Top rim — Fresnel highlight

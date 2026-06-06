@@ -51,8 +51,8 @@ import com.beatdrop.kt.youtube.DownloadStatus
 import com.beatdrop.kt.youtube.OnlineResult
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Spotify Glassmorphism Search Screen
-// Accent: #21FF6B (Spotify Green)
+// BeatDrop Glassmorphism Search Screen
+// Accent: #FA2D48 (Apple Music Pink)
 // Glass search bar with blur 28px
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -133,15 +133,16 @@ fun SearchScreen(
             Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 24.dp),
         ) {
             // ── Header ──────────────────────────────────────────────────────
             Text(
                 "Search",
                 color     = C.text,
                 fontSize  = 28.sp,
-                fontWeight = FontWeight.Black,
-                modifier  = Modifier.padding(vertical = 10.dp),
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.7).sp,
+                modifier  = Modifier.padding(top = 14.dp, bottom = 12.dp),
             )
 
             // ── Offline banner ──────────────────────────────────────────────
@@ -150,15 +151,16 @@ fun SearchScreen(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 4.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFFFFF3CD))
-                        .padding(10.dp),
+                        .padding(top = 6.dp, bottom = 6.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(C.accent.copy(alpha = 0.14f))
+                        .border(0.5.dp, C.accent.copy(alpha = 0.30f), RoundedCornerShape(14.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Ic.WifiOff, null, tint = Color(0xFF856404), modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("You're offline. Search results won't load.", color = Color(0xFF856404), fontSize = 12.sp)
+                    Icon(Ic.WifiOff, null, tint = C.accent, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text("You're offline. Search results won't load.", color = C.text.copy(alpha = 0.85f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 }
             }
 
@@ -668,7 +670,7 @@ fun SearchScreen(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Catalog-style result row — glass play overlay, Spotify Green save icon
+// Catalog-style result row — glass play overlay, Apple Music Pink save icon
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable

@@ -83,50 +83,15 @@ fun GradientScrim(modifier: Modifier = Modifier, color: Color = Color.Black) {
 }
 
 /**
- * Shared Liquid Glass card — multi-layer translucent fill + rim light + inner glow + hairline border.
- * Matches the iOS 26 floating glass panels from the Spotify concept.
+ * Shared glass card — unified obsidian material via premiumGlass.
  */
 @Composable
 fun GlassCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    val C = LocalAppColors.current
-    val shape = RoundedCornerShape(Radius.xl)
     Column(
-        modifier.fillMaxWidth().padding(vertical = 5.dp)
-            .shadow(
-                elevation = 10.dp,
-                shape = shape,
-                ambientColor = Color.Black.copy(alpha = if (C.isDark) 0.34f else 0.12f),
-                spotColor = Color.Black.copy(alpha = if (C.isDark) 0.24f else 0.10f),
-            )
-            .clip(shape)
-            // Content-safe premium glass fill: translucent but never so dark
-            // that child text/icons disappear on real devices.
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        if (C.isDark) Color(0xFF1B2028).copy(alpha = 0.72f) else Color.White.copy(alpha = 0.78f),
-                        if (C.isDark) Color(0xFF0E1116).copy(alpha = 0.66f) else Color.White.copy(alpha = 0.66f),
-                    ),
-                ),
-            )
-            .drawWithContent {
-                drawContent()
-                drawRect(brush = Brush.verticalGradient(
-                    listOf(
-                        Color.White.copy(alpha = if (C.isDark) 0.12f else 0.26f),
-                        Color.Transparent
-                    ),
-                    startY = 0f, endY = size.height * 0.32f))
-                drawRect(brush = Brush.verticalGradient(
-                    listOf(
-                        Color.Transparent,
-                        if (C.isDark) Color.White.copy(alpha = 0.035f) else Color.Black.copy(alpha = 0.025f),
-                    ),
-                    startY = size.height * 0.72f,
-                    endY = size.height,
-                ))
-            }
-            .border(0.75.dp, Color.White.copy(alpha = if (C.isDark) 0.13f else 0.36f), shape)
+        modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp)
+            .premiumGlass(level = GlassLevel.Z2_Card, shape = RoundedCornerShape(Radius.lg))
             .padding(16.dp),
         content = content,
     )
@@ -148,28 +113,9 @@ fun GlassPill(
     Row(
         modifier
             .clip(shape)
-            .background(
-                when {
-                    active -> C.accent.copy(alpha = 0.42f)
-                    C.isDark -> Color(0xFF1A1F27).copy(alpha = 0.70f)
-                    else -> Color.White.copy(alpha = 0.70f)
-                }
-            )
-            .drawWithContent {
-                drawContent()
-                // Top rim light
-                drawRect(brush = Brush.verticalGradient(
-                    listOf(
-                        if (active) C.accent.copy(alpha = 0.18f) else Color.White.copy(alpha = if (C.isDark) 0.08f else 0.15f),
-                        Color.Transparent
-                    ),
-                    startY = 0f, endY = size.height * 0.4f,
-                ))
-            }
-            .border(
-                0.5.dp,
-                if (active) C.accent.copy(alpha = 0.35f) else Color.White.copy(alpha = if (C.isDark) 0.13f else 0.32f),
-                shape,
+            .then(
+                if (active) Modifier.background(C.accent).border(0.6.dp, Color.White.copy(alpha = 0.22f), shape)
+                else Modifier.premiumGlass(level = GlassLevel.Z2_Card, shape = shape)
             )
             .pressableScale(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -192,24 +138,12 @@ fun GlassSearchBar(
     trailingIcon: @Composable (() -> Unit)? = null,
 ) {
     val C = LocalAppColors.current
-    val shape = RoundedCornerShape(50)
+    val shape = RoundedCornerShape(28.dp)
     Row(
         modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(if (C.isDark) Color(0xFF171C24).copy(alpha = 0.76f) else Color.White.copy(alpha = 0.76f))
-            .drawWithContent {
-                drawContent()
-                drawRect(brush = Brush.verticalGradient(
-                    listOf(
-                        Color.White.copy(alpha = if (C.isDark) 0.06f else 0.12f),
-                        Color.Transparent
-                    ),
-                    startY = 0f, endY = size.height * 0.4f,
-                ))
-            }
-            .border(0.7.dp, Color.White.copy(alpha = if (C.isDark) 0.14f else 0.32f), shape)
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .premiumGlass(level = GlassLevel.Z2_Card, shape = shape)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leadingIcon != null) {

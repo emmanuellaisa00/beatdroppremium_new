@@ -80,7 +80,7 @@ fun ChannelScreen(
                             .size(64.dp)
                             .glassShadow(elevation = 12.dp, shape = CircleShape, isDark = C.isDark)
                             .clip(CircleShape)
-                            .background(Brush.linearGradient(listOf(C.accent, C.purple)))
+                            .background(Brush.linearGradient(listOf(C.accent, C.accentDark)))
                             .drawWithContent {
                                 drawContent()
                                 drawRect(
