@@ -61,6 +61,7 @@ object Ic {
     val Close             : ImageVector get() = Lucide.X
     val ChevronRight      : ImageVector get() = Lucide.ChevronRight
     val ChevronDown       : ImageVector get() = Lucide.ChevronDown
+    val ChevronUp         : ImageVector get() = Lucide.ChevronUp
     val More              : ImageVector get() = Lucide.Ellipsis
 
     // ── Transport (default Lucide, but use TransportPlay/Pause on CTAs) ──────

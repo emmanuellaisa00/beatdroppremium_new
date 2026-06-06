@@ -1,62 +1,35 @@
 package com.beatdrop.kt.ui.screens
 
-import android.graphics.RenderEffect
-import android.graphics.Shader
-import android.os.Build
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import com.beatdrop.kt.ui.components.BeatDropSearchField
-import com.beatdrop.kt.ui.components.GlassLevel
-import com.beatdrop.kt.ui.components.Ic
-import com.beatdrop.kt.ui.components.ScreenScaffold
-import com.beatdrop.kt.ui.components.glassRow
-import com.beatdrop.kt.ui.components.premiumGlass
+import androidx.compose.ui.unit.sp
 import com.beatdrop.kt.PlayerViewModel
 import com.beatdrop.kt.data.Track
-import com.beatdrop.kt.data.SortMode
-import com.beatdrop.kt.ui.components.pressableScale
+import com.beatdrop.kt.ui.components.*
 import com.beatdrop.kt.ui.theme.LocalAppColors
-import com.beatdrop.kt.ui.theme.Radius
-import com.beatdrop.kt.ui.theme.Spacing
-import com.beatdrop.kt.ui.theme.Type
 
-private enum class LibTab(val label: String) { SONGS("Songs"), ALBUMS("Albums"), ARTISTS("Artists") }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// BeatDrop Library — Premium Frosted Glass (matches HTML concept)
-// Wordmark on top, monochrome icons, dark obsidian glass everywhere,
-// inset glass active tab. Pink accent only for focus / progress / CTAs.
-// ═══════════════════════════════════════════════════════════════════════════════
-
+/**
+ * Library — rewritten from scratch to pixel-match the BeatDrop HTML concept.
+ *
+ * Layout (top to bottom):
+ *   HtmlHeader           "BeatDrop" + "Your music everywhere" + 3 circular glass icons
+ *   Search bar           Full-width 52 dp pill, hands off to a real input on focus
+ *   Stats chips          3 floating glass tiles (Songs / Albums / Artists)
+ *   Segmented control    Songs / Albums / Artists with sliding inset orb
+ *   Action cards         2x2 grid (Play All / Shuffle / Favorites / Downloads)
+ *   Recently Played      Horizontal carousel of 168 dp jump cards
+ *   Songs list           Vertical list of SongRows
+ */
 @Composable
 fun LibraryScreen(
     vm: PlayerViewModel,
@@ -72,413 +45,258 @@ fun LibraryScreen(
     val query   by vm.query.collectAsState()
     val loaded  by vm.loaded.collectAsState()
     val tracks  by vm.tracks.collectAsState()
-    var tab     by remember { mutableStateOf(LibTab.SONGS) }
+    val current by vm.current.collectAsState()
+    var tabIndex by remember { mutableStateOf(0) }
+
+    // Pre-compute album & artist counts from the loaded tracks (no extra fetches).
+    val albumCount = remember(tracks) { tracks.map { it.album }.distinct().size }
+    val artistCount = remember(tracks) { tracks.map { it.artist }.distinct().size }
+    val recentlyPlayed = remember(tracks) {
+        tracks.sortedByDescending { it.dateAdded }.take(10)
+    }
 
     ScreenScaffold {
-    Column(Modifier.fillMaxSize()) {
-        // ── Top bar: "BeatDrop" wordmark + circular monochrome glass icons ─
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(start = Spacing.xxl, end = Spacing.lg, top = 12.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.Bottom,
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = 0.dp, bottom = 220.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            Column(Modifier.weight(1f)) {
-                Text("BeatDrop", style = Type.title1, color = C.text, fontWeight = FontWeight.Bold)
-                Text("Your music everywhere", style = Type.caption, color = C.text.copy(alpha = 0.50f))
+            // ── Header ────────────────────────────────────────────────────
+            item {
+                HtmlHeader(
+                    title = "BeatDrop",
+                    subtitle = "Your music everywhere",
+                    actions = {
+                        CircularGlassIcon(Ic.Playlist,  "Playlists",  onClick = onOpenPlaylists)
+                        CircularGlassIcon(Ic.Download,  "Downloads",  onClick = onOpenDownloads)
+                        CircularGlassIcon(Ic.Settings,  "Settings",   onClick = onOpenSettings)
+                    },
+                )
             }
-            Spacer(Modifier.width(Spacing.sm))
-            HeaderIcon(Ic.Playlist, "Playlists", onOpenPlaylists)
-            Spacer(Modifier.width(8.dp))
-            HeaderIcon(Ic.Download, "Downloads", onOpenDownloads)
-            Spacer(Modifier.width(8.dp))
-            HeaderIcon(Ic.Settings, "Settings",  onOpenSettings)
-        }
 
-        // ── Search field ─────────────────────────────────────────────────
-        Box(Modifier.padding(horizontal = Spacing.xxl, vertical = Spacing.md)) {
-            BeatDropSearchField(
-                value = query,
-                onChange = vm::setQuery,
-                placeholder = "Search songs, albums, artists",
-                onSubmit = null,
-            )
-        }
+            // ── Search ────────────────────────────────────────────────────
+            item {
+                Box(Modifier.padding(horizontal = PageHorizontalPadding, vertical = 6.dp)) {
+                    BeatDropSearchField(
+                        value = query,
+                        onChange = vm::setQuery,
+                        placeholder = "Search songs, albums, artists",
+                        onSubmit = null,
+                    )
+                }
+            }
 
-        // ── Segmented control — dark glass pill with inset glass active orb ─
-        Box(
-            Modifier
-                .padding(horizontal = Spacing.xxl, vertical = Spacing.md)
-                .fillMaxWidth()
-                .height(48.dp)
-                .premiumGlass(level = com.beatdrop.kt.ui.components.GlassLevel.Z2_Card, shape = RoundedCornerShape(24.dp))
-                .padding(5.dp),
-        ) {
-            Row(Modifier.fillMaxSize()) {
-                LibTab.values().forEach { t ->
-                    val active = t == tab
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .then(
-                                if (active) Modifier.premiumGlass(
-                                    level = com.beatdrop.kt.ui.components.GlassLevel.Z5_ActiveLens,
-                                    shape = RoundedCornerShape(20.dp),
-                                ) else Modifier
+            // ── Stats chips ───────────────────────────────────────────────
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = PageHorizontalPadding, vertical = 18.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    StatChip("${tracks.size}",  "Songs",   Modifier.weight(1f))
+                    StatChip("$albumCount",     "Albums",  Modifier.weight(1f), onClick = { tabIndex = 1 })
+                    StatChip("$artistCount",    "Artists", Modifier.weight(1f), onClick = { tabIndex = 2 })
+                }
+            }
+
+            // ── Segmented control ─────────────────────────────────────────
+            item {
+                Box(Modifier.padding(horizontal = PageHorizontalPadding)) {
+                    SegmentedGlass(
+                        options = listOf("Songs", "Albums", "Artists"),
+                        selectedIndex = tabIndex,
+                        onSelect = { tabIndex = it },
+                    )
+                }
+            }
+
+            // ── Action cards (only on the Songs tab — matches HTML) ──────
+            if (tabIndex == 0) {
+                item {
+                    Column(
+                        Modifier.padding(horizontal = PageHorizontalPadding, vertical = 18.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ActionCardSmall(
+                                icon = Ic.TransportPlay, filledIcon = true,
+                                title = "Play All",
+                                subtitle = "${tracks.size} songs",
+                                onClick = { if (tracks.isNotEmpty()) vm.playList(tracks, tracks.first().id) },
+                                modifier = Modifier.weight(1f),
                             )
-                            .pressableScale(onClick = { tab = t }, scaleTo = 0.97f),
+                            ActionCardSmall(
+                                icon = Ic.Shuffle,
+                                title = "Shuffle",
+                                subtitle = "Mix it up",
+                                onClick = {
+                                    if (tracks.isNotEmpty()) {
+                                        val shuf = tracks.shuffled()
+                                        vm.playList(shuf, shuf.first().id)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ActionCardSmall(
+                                icon = Ic.Heart,
+                                title = "Favorites",
+                                subtitle = "Your liked songs",
+                                onClick = onOpenPlaylists,
+                                modifier = Modifier.weight(1f),
+                            )
+                            ActionCardSmall(
+                                icon = Ic.Download,
+                                title = "Downloads",
+                                subtitle = "Offline tracks",
+                                onClick = onOpenDownloads,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Recently Played carousel (only on the Songs tab) ─────────
+            if (tabIndex == 0 && recentlyPlayed.isNotEmpty()) {
+                item {
+                    SectionTitle("Recently Played", trailing = "See all", onTrailingClick = onOpenLocalDiscover)
+                }
+                item {
+                    JumpCarousel(
+                        cards = recentlyPlayed.map {
+                            JumpCardData(
+                                id = it.id,
+                                title = it.title,
+                                artist = it.artist,
+                                artworkUri = it.artworkUri,
+                                glyph = if (it.id.hashCode() % 2 == 0) CoverGlyph.Note else CoverGlyph.Disc,
+                            )
+                        },
+                        onClick = { c ->
+                            val t = recentlyPlayed.find { it.id == c.id } ?: return@JumpCarousel
+                            vm.playList(recentlyPlayed, t.id)
+                        },
+                    )
+                }
+            }
+
+            // ── List content for the current tab ──────────────────────────
+            when {
+                !loaded -> item {
+                    Box(
+                        Modifier.fillMaxWidth().padding(top = 80.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { CircularProgressIndicator(color = C.accent) }
+                }
+                tracks.isEmpty() -> item {
+                    Box(
+                        Modifier.fillMaxWidth().padding(top = 80.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            t.label,
-                            style  = Type.callout,
-                            color  = if (active) C.text else C.text.copy(alpha = 0.55f),
-                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                            "No songs in your library yet.",
+                            color = C.text.copy(alpha = 0.55f),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
                         )
+                    }
+                }
+                tabIndex == 0 -> {
+                    item { SectionTitle("Songs", trailing = "${tracks.size} tracks") }
+                    items(tracks, key = { it.id }) { t ->
+                        val active = current?.id == t.id
+                        Box(Modifier.padding(horizontal = PageHorizontalPadding, vertical = 5.dp)) {
+                            SongRow(
+                                title = t.title,
+                                artist = if (t.album.isNotBlank()) "${t.artist} · ${t.album}" else t.artist,
+                                duration = formatMs(t.durationMs),
+                                artworkUri = t.artworkUri,
+                                active = active,
+                                onClick = { vm.playList(tracks, t.id) },
+                                onMenu = { /* future: action sheet */ },
+                            )
+                        }
+                    }
+                }
+                tabIndex == 1 -> {
+                    val albums = remember(tracks) {
+                        tracks.groupBy { it.album }
+                            .filterKeys { it.isNotBlank() }
+                            .map { (album, ts) ->
+                                Triple(album, ts.first().artist, ts.first().artworkUri)
+                            }
+                            .sortedBy { it.first.lowercase() }
+                    }
+                    item { SectionTitle("Albums", trailing = "${albums.size} albums") }
+                    itemsIndexed(albums.chunked(2)) { _, pair ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = PageHorizontalPadding, vertical = 5.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            pair.forEach { (album, artist, art) ->
+                                Column(
+                                    Modifier
+                                        .weight(1f)
+                                        .pressableScale(onClick = { onOpenAlbum(album, artist) }, scaleTo = 0.96f),
+                                ) {
+                                    MonochromeCover(
+                                        artworkUri = art,
+                                        cornerRadius = 16.dp,
+                                        modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        album,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = C.text,
+                                        maxLines = 1,
+                                    )
+                                    Text(
+                                        artist,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = C.text.copy(alpha = 0.50f),
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
+                else -> {
+                    val artists = remember(tracks) {
+                        tracks.groupBy { it.artist }
+                            .filterKeys { it.isNotBlank() }
+                            .map { (artist, ts) -> artist to ts.size }
+                            .sortedBy { it.first.lowercase() }
+                    }
+                    item { SectionTitle("Artists", trailing = "${artists.size} artists") }
+                    items(artists) { (artist, count) ->
+                        Box(Modifier.padding(horizontal = PageHorizontalPadding, vertical = 5.dp)) {
+                            SongRow(
+                                title = artist,
+                                artist = if (count == 1) "1 song" else "$count songs",
+                                duration = "",
+                                artworkUri = null,
+                                onClick = { onOpenArtist(artist) },
+                                onMenu = null,
+                            )
+                        }
                     }
                 }
             }
         }
-
-        when {
-            !loaded   -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator(color = C.accent) }
-            tracks.isEmpty() -> EmptyLibrary()
-            else -> when (tab) {
-                LibTab.SONGS  -> SongsList(vm)
-                LibTab.ALBUMS -> AlbumsGrid(vm, onOpenAlbum)
-                LibTab.ARTISTS -> ArtistsList(vm, onOpenArtist)
-            }
-        }
-    }
     }
 }
 
-@Composable
-private fun HeaderIcon(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    desc: String,
-    onClick: () -> Unit,
-) {
-    val C = LocalAppColors.current
-    Box(
-        Modifier
-            .size(40.dp)
-            .premiumGlass(level = com.beatdrop.kt.ui.components.GlassLevel.Z2_Card, shape = CircleShape)
-            .pressableScale(onClick = onClick, scaleTo = 0.85f),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, desc, tint = C.text.copy(alpha = 0.85f), modifier = Modifier.size(18.dp))
-    }
-}
-
-// ─── Songs List ────────────────────────────────────────────────────────────────
-
-@Composable
-private fun SongsList(vm: PlayerViewModel) {
-    val C      = LocalAppColors.current
-    val list   by vm.filteredTracks.collectAsState()
-    val current by vm.current.collectAsState()
-    val sort   by vm.sort.collectAsState()
-    var sheetTrack by remember { mutableStateOf<Track?>(null) }
-
-    LazyColumn(contentPadding = PaddingValues(bottom = 190.dp)) {
-        // Play All / Shuffle action bar
-        item {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.lg, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                ActionPill("Play", Ic.TransportPlay, C.accent, Color.White, Modifier.weight(1f)) {
-                    if (list.isNotEmpty()) vm.playList(list, list.first().id)
-                }
-                ActionPill("Shuffle", Ic.Shuffle, C.bg3, C.text, Modifier.weight(1f)) {
-                    if (list.isNotEmpty()) vm.shuffleAll()
-                }
-            }
-        }
-        // Sort control row
-        item {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.lg, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("${list.size} songs", style = Type.footnote, color = C.textSecondary, modifier = Modifier.weight(1f))
-                SortMenu(sort) { vm.setSort(it) }
-            }
-        }
-        itemsIndexed(list, key = { _, t -> t.id }) { _, song ->
-            SongRow(song, current?.id == song.id, onClick = { vm.play(song) }, onLongClick = { sheetTrack = song })
-        }
-    }
-    sheetTrack?.let { tk ->
-        com.beatdrop.kt.ui.components.TrackActionsSheet(vm, tk, onDismiss = { sheetTrack = null })
-    }
-}
-
-// ─── Action Pill — glass button with accent color ─────────────────────────────
-
-@Composable
-private fun ActionPill(
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    bg: Color,
-    fg: Color,
-    modifier: Modifier,
-    onClick: () -> Unit,
-) {
-    val C = LocalAppColors.current
-    val isAccent = bg == C.accent
-    Row(
-        modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(
-                if (isAccent) C.accent.copy(alpha = 0.25f)
-                else if (C.isDark) Color.White.copy(alpha = 0.08f)
-                else Color.Black.copy(alpha = 0.05f),
-            )
-            .drawWithContent {
-                drawContent()
-                drawRect(brush = Brush.verticalGradient(
-                    listOf(
-                        Color.White.copy(alpha = if (isAccent) 0.12f else if (C.isDark) 0.06f else 0.08f),
-                        Color.Transparent,
-                    ),
-                    startY = 0f, endY = size.height * 0.4f,
-                ))
-            }
-            .border(0.5.dp, if (isAccent) C.accent.copy(alpha = 0.25f) else C.glassBorder, RoundedCornerShape(14.dp))
-            .pressableScale(onClick = onClick)
-            .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment     = Alignment.CenterVertically,
-    ) {
-        Icon(icon, null, tint = fg, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(label, style = Type.headline, color = fg)
-    }
-}
-
-// ─── Albums Grid ───────────────────────────────────────────────────────────────
-
-@Composable
-private fun AlbumsGrid(vm: PlayerViewModel, onOpen: (String, String) -> Unit) {
-    val C  = LocalAppColors.current
-    val ctx = LocalContext.current
-    val albums by vm.albumGroups.collectAsState()
-
-    LazyVerticalGrid(
-        columns        = GridCells.Fixed(2),
-        contentPadding = PaddingValues(Spacing.lg, 4.dp, Spacing.lg, 170.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalArrangement   = Arrangement.spacedBy(18.dp),
-    ) {
-        items(albums, key = { it.album + it.artist }) { a ->
-            Column(Modifier.pressableScale(onClick = { onOpen(a.album, a.artist) })) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(Radius.md))
-                        .background(C.bg3)
-                        .border(0.5.dp, C.glassBorder, RoundedCornerShape(Radius.md)),
-                ) {
-                    AsyncImage(
-                        model  = ImageRequest.Builder(ctx).data(a.artworkUri).crossfade(true).size(256).build(),
-                        contentDescription = null,
-                        contentScale       = ContentScale.Crop,
-                        modifier           = Modifier.fillMaxSize(),
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(a.album,  style = Type.callout,  color = C.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(a.artist, style = Type.footnote, color = C.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-    }
-}
-
-// ─── Artists List ──────────────────────────────────────────────────────────────
-
-@Composable
-private fun ArtistsList(vm: PlayerViewModel, onOpen: (String) -> Unit) {
-    val C      = LocalAppColors.current
-    val artists by vm.artistGroups.collectAsState()
-
-    LazyColumn(contentPadding = PaddingValues(bottom = 190.dp)) {
-        itemsIndexed(artists, key = { _, ar -> ar.artist }) { _, ar ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .pressableScale(onClick = { onOpen(ar.artist) })
-                    .padding(horizontal = Spacing.lg, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Accent green gradient avatar
-                Box(
-                    Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(C.accent, C.accentDark)))
-                        .border(0.5.dp, C.accent.copy(alpha = 0.30f), CircleShape),
-                    Alignment.Center,
-                ) {
-                    Text(ar.artist.take(1).uppercase(), style = Type.title3, color = Color.White)
-                }
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(ar.artist, style = Type.headline, color = C.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${ar.trackCount} songs", style = Type.footnote, color = C.textSecondary)
-                }
-            }
-        }
-    }
-}
-
-// ─── Song Row ──────────────────────────────────────────────────────────────────
-
-@Composable
-private fun SongRow(song: Track, isCurrent: Boolean, onClick: () -> Unit, onLongClick: () -> Unit = {}) {
-    val C  = LocalAppColors.current
-    val ctx = LocalContext.current
-
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .pressableScale(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = Spacing.lg, vertical = 7.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier
-                .size(52.dp)
-                .clip(RoundedCornerShape(Radius.sm))
-                .background(C.bg3),
-            Alignment.Center,
-        ) {
-            AsyncImage(
-                model  = ImageRequest.Builder(ctx).data(song.artworkUri).crossfade(true).size(96).build(),
-                contentDescription = null,
-                contentScale       = ContentScale.Crop,
-                modifier           = Modifier.fillMaxSize(),
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                song.title,
-                style  = Type.headline,
-                color  = if (isCurrent) C.accent else C.text,  // Green when current
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                song.artist,
-                style  = Type.footnote,
-                color  = C.textSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Text(fmt(song.durationMs), style = Type.footnote, color = C.textTertiary)
-    }
-}
-
-// ─── Empty State ───────────────────────────────────────────────────────────────
-
-@Composable
-private fun EmptyLibrary() {
-    // ✅ UX6 Fixed: Empty state now has clear action button + file picker + YouTube hint
-    val C = LocalAppColors.current
-    val ctx = LocalContext.current
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(40.dp),
-        verticalArrangement   = Arrangement.Center,
-        horizontalAlignment   = Alignment.CenterHorizontally,
-    ) {
-        Icon(Ic.MusicNote, null, tint = C.textTertiary, modifier = Modifier.size(56.dp))
-        Spacer(Modifier.height(12.dp))
-        Text("No music found", style = Type.title3, color = C.text)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Copy MP3, FLAC, AAC, or WAV files to your device's Music folder,\nor tap below to use the system file picker.",
-            style = Type.footnote, color = C.textSecondary,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp),
-        )
-        Spacer(Modifier.height(20.dp))
-        Text(
-            "Or search and download songs from YouTube.",
-            style = Type.footnote, color = C.textTertiary,
-        )
-    }
-}
-
-// ─── Basic Search Field ────────────────────────────────────────────────────────
-
-@Composable
-private fun BasicSearchField(
-    value: String,
-    onChange: (String) -> Unit,
-    color: Color,
-) {
-    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-    androidx.compose.foundation.text.BasicTextField(
-        value          = value,
-        onValueChange  = onChange,
-        singleLine     = true,
-        textStyle      = Type.body.copy(color = color),
-        cursorBrush    = androidx.compose.ui.graphics.SolidColor(LocalAppColors.current.accent),
-        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-            imeAction = androidx.compose.ui.text.input.ImeAction.Search,
-        ),
-        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-            onSearch = { keyboardController?.hide() },
-        ),
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-    )
-}
-
-// ─── Sort Menu ─────────────────────────────────────────────────────────────────
-
-@Composable
-private fun SortMenu(current: SortMode, onPick: (SortMode) -> Unit) {
-    val C = LocalAppColors.current
-    var open by remember { mutableStateOf(false) }
-
-    Box {
-        Row(
-            Modifier
-                .clip(RoundedCornerShape(10.dp))
-                .background(C.glassCardElevated)
-                .border(0.5.dp, C.glassCardElevatedBorder, RoundedCornerShape(10.dp))
-                .pressableScale(onClick = { open = true }, scaleTo = 0.95f)
-                .padding(horizontal = 12.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Ic.Sort, null, tint = C.textSecondary, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(current.label, style = Type.caption, color = C.text)
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            SortMode.values().forEach { mode ->
-                DropdownMenuItem(
-                    text    = { Text(mode.label, color = if (mode == current) C.accent else C.text) },
-                    onClick = { onPick(mode); open = false },
-                )
-            }
-        }
-    }
-}
-
-fun fmt(ms: Long): String {
-    val s = (ms / 1000).toInt()
-    return "%d:%02d".format(s / 60, s % 60)
+private fun formatMs(ms: Long): String {
+    val totalSec = (ms / 1000).coerceAtLeast(0)
+    val m = totalSec / 60
+    val s = totalSec % 60
+    return "%d:%02d".format(m, s)
 }
