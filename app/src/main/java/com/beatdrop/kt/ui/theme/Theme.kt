@@ -2,6 +2,7 @@ package com.beatdrop.kt.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -237,9 +238,9 @@ object Spacing {
     val xs  = 4.dp
     val sm  = 8.dp
     val md  = 12.dp
-    val lg  = 16.dp
-    val xl  = 20.dp
-    val xxl = 28.dp
+    val lg  = 16.dp      // primary screen gutter — matches compact iOS music UIs
+    val xl  = 18.dp
+    val xxl = 24.dp
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -341,6 +342,20 @@ object RadiusFamily {
 
 val LocalAppColors = staticCompositionLocalOf { DarkColors }
 
+private val BeatDropTypography = Typography(
+    displayLarge = Type.largeTitle,
+    headlineLarge = Type.title1,
+    headlineMedium = Type.title2,
+    titleLarge = Type.title3,
+    titleMedium = Type.headline,
+    bodyLarge = Type.body,
+    bodyMedium = Type.callout,
+    bodySmall = Type.footnote,
+    labelLarge = Type.callout,
+    labelMedium = Type.caption,
+    labelSmall = Type.overline,
+)
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Theme Provider
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -371,6 +386,6 @@ fun BeatDropTheme(themePref: String = "light", content: @Composable () -> Unit) 
             onSurface    = appColors.text,
         )
     CompositionLocalProvider(LocalAppColors provides appColors) {
-        MaterialTheme(colorScheme = scheme, content = content)
+        MaterialTheme(colorScheme = scheme, typography = BeatDropTypography, content = content)
     }
 }
