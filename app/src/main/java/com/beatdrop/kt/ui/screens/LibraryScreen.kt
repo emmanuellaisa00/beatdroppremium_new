@@ -63,6 +63,7 @@ fun LibraryScreen(
     onOpenLocalDiscover: () -> Unit = {},
     onOpenPlaylists: () -> Unit = {},
     onOpenStats: () -> Unit = {},
+    onOpenDownloads: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
 ) {
     val C       = LocalAppColors.current
@@ -87,7 +88,7 @@ fun LibraryScreen(
                 Text("Drop", style = Type.largeTitle, color = C.text)
             }
             HeaderIcon(Ic.Playlist, "Playlists", onOpenPlaylists)
-            HeaderIcon(Ic.Stats,   "Stats",     onOpenStats)
+            HeaderIcon(Ic.Download, "Downloads", onOpenDownloads)
             HeaderIcon(Ic.Settings, "Settings",  onOpenSettings)
         }
 

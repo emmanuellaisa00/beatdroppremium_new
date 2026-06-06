@@ -40,6 +40,8 @@ fun DownloadsScreen(
 ) {
     val C = LocalAppColors.current
     val activeJobs by DownloadManagerV2.jobs.collectAsState()
+    val dataSaver by vm.dataSaver.collectAsState()
+    val allowVideoFallback by vm.allowVideoFallback.collectAsState()
     var showHistory by remember { mutableStateOf(true) }
 
     ScreenScaffold(ambientColor = C.glassAmbient) {
@@ -50,6 +52,39 @@ fun DownloadsScreen(
                 onBack = onBack,
                 leadingIcon = Ic.Download,
             )
+
+            // SnapTube-power status panel — compact but explicit.
+            Box(Modifier.padding(horizontal = Spacing.lg, vertical = 4.dp)) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .glassCard(radius = Radius.lg)
+                        .padding(14.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Ic.Storage, null, tint = C.accent, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Download engine", style = Type.callout, color = C.text, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "${StorageHelper.formatSize(DownloadHistory.totalDownloadSize())} saved · ${activeJobs.size} active jobs",
+                                style = Type.footnote, color = C.textSecondary,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PowerBadge("Data Saver", dataSaver, Modifier.weight(1f))
+                        PowerBadge("Video fallback", allowVideoFallback, Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Use Settings → Streaming for quality, data saver, and video fallback. Next: format picker + public Music/BeatDrop storage.",
+                        style = Type.caption,
+                        color = C.textTertiary,
+                    )
+                }
+            }
 
             // Tab selector — glass chips
             Row(
@@ -110,6 +145,29 @@ fun DownloadsScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PowerBadge(label: String, enabled: Boolean, modifier: Modifier = Modifier) {
+    val C = LocalAppColors.current
+    val shape = RoundedCornerShape(Radius.pill)
+    Row(
+        modifier
+            .clip(shape)
+            .background(if (enabled) C.accent.copy(alpha = 0.20f) else Color.White.copy(alpha = if (C.isDark) 0.07f else 0.16f))
+            .border(0.6.dp, if (enabled) C.accent.copy(alpha = 0.34f) else Color.White.copy(alpha = if (C.isDark) 0.10f else 0.24f), shape)
+            .padding(horizontal = 10.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(7.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(if (enabled) C.accent else C.textTertiary),
+        )
+        Spacer(Modifier.width(7.dp))
+        Text(label, style = Type.caption, color = if (enabled) C.accent else C.textSecondary, maxLines = 1)
     }
 }
 

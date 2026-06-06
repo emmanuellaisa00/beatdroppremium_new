@@ -656,7 +656,7 @@ private fun TabsHost(
                 when (tab) {
                     "library"  -> LibraryScreen(vm, onOpenAlbum = onOpenAlbum, onOpenArtist = onOpenArtist,
                         onOpenLocalDiscover = onOpenLocalDiscover, onOpenPlaylists = onOpenPlaylists, onOpenStats = onOpenStats,
-                        onOpenSettings = onOpenSettings)
+                        onOpenDownloads = onOpenDownloads, onOpenSettings = onOpenSettings)
                     "discover" -> DiscoverScreen(
                         vm,
                         onOpenSearch = onOpenSearch,
