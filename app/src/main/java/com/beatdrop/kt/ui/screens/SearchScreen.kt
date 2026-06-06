@@ -338,7 +338,9 @@ fun SearchScreen(
                             Box(
                                 Modifier
                                     .fillMaxWidth()
-                                    .background(C.bg0)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .background(if (C.isDark) Color(0xD9050505) else Color.White.copy(alpha = 0.82f))
+                                    .border(0.5.dp, Color.White.copy(alpha = if (C.isDark) 0.10f else 0.24f), RoundedCornerShape(24.dp))
                                     .padding(top = 4.dp, bottom = 4.dp),
                             ) {
                                 SearchFilterChips(
@@ -1060,16 +1062,24 @@ private fun TopResultHero(
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(C.bg2.copy(alpha = if (C.isDark) 0.55f else 0.92f))
+            .clip(RoundedCornerShape(24.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        if (C.isDark) Color(0xFF1B2028).copy(alpha = 0.76f) else Color.White.copy(alpha = 0.82f),
+                        if (C.isDark) Color(0xFF0E1116).copy(alpha = 0.68f) else Color.White.copy(alpha = 0.70f),
+                    ),
+                ),
+            )
+            .border(0.7.dp, Color.White.copy(alpha = if (C.isDark) 0.13f else 0.30f), RoundedCornerShape(24.dp))
             .pressableScale(onClick = onClick, scaleTo = 0.97f)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             Modifier
-                .size(100.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .size(88.dp)
+                .clip(RoundedCornerShape(18.dp))
                 .background(C.bg3),
         ) {
             if (thumbnailUrl != null) {
@@ -1117,9 +1127,10 @@ private fun BrowseCategoryCard(
     val accent = Color(accentHex)
     Box(
         modifier = modifier
-            .height(100.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(accent)
+            .height(86.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(accent.copy(alpha = 0.78f))
+            .border(0.6.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(22.dp))
             .pressableScale(onClick = onClick, scaleTo = 0.96f)
             .padding(14.dp),
     ) {
@@ -1141,7 +1152,7 @@ private fun BrowseCategoryCard(
         Text(
             title,
             color = Color.White,
-            fontSize = 16.sp,
+            fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
