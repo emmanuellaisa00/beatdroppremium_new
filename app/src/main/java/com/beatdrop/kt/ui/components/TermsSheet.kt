@@ -16,6 +16,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.unit.sp
 
 /**
  * Privacy / Terms acceptance sheet.
@@ -52,7 +54,7 @@ fun TermsSheet(
                     modifier = Modifier.size(64.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("🛡️", fontSize = androidx.compose.ui.unit.sp(28.sp))
+                        Text("🛡️", fontSize = 28.sp)
                     }
                 }
 

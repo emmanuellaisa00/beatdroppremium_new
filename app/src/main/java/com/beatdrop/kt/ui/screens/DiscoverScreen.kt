@@ -45,7 +45,14 @@ fun DiscoverScreen(
                 )
             }
         }
-        item { Spacer(Modifier.height(24.dp)); FilterPills(listOf("All", "Music", "Podcasts"), filterIndex) { filterIndex = it } }
+        item {
+            Spacer(Modifier.height(24.dp))
+            FilterPills(
+                pills = listOf("All", "Music", "Podcasts"),
+                selectedIndex = filterIndex,
+                onSelected = { filterIndex = it },
+            )
+        }
         item { Spacer(Modifier.height(22.dp)); QuickAccessGrid(SampleData.homeQuickAccess, onOpenAlbum) }
         item {
             Spacer(Modifier.height(34.dp)); SectionHeader("Recently played", onAction = onOpenTrending)

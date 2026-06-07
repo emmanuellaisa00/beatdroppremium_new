@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.beatdrop.kt.ui.components.BackButton
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.ui.draw.clip
 
 @Composable
 fun StorageScreen(onBack: () -> Unit) {
@@ -29,8 +30,11 @@ fun StorageScreen(onBack: () -> Unit) {
                     Spacer(Modifier.height(12.dp))
                     LinearProgressIndicator(progress = { 0.08f }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)), color = Accent, trackColor = SurfaceTile)
                     Spacer(Modifier.height(20.dp))
-                    listOf("Downloads" to "1.8 GB" to 0.75f, "Cache" to "0.4 GB" to 0.17f, "Other" to "0.2 GB" to 0.08f).forEach { (label, data) ->
-                        val (size, fraction) = data
+                    listOf(
+                        Triple("Downloads", "1.8 GB", 0.75f),
+                        Triple("Cache", "0.4 GB", 0.17f),
+                        Triple("Other", "0.2 GB", 0.08f)
+                    ).forEach { (label, size, _) ->
                         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(label, color = TextMedium, fontWeight = FontWeight.Medium)
                             Text(size, color = Color.White, fontWeight = FontWeight.Bold)

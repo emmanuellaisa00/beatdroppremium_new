@@ -24,6 +24,7 @@ import com.beatdrop.kt.ui.components.BackButton
 import com.beatdrop.kt.ui.components.SectionHeader
 import com.beatdrop.kt.ui.components.TrackRow
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.BorderStroke
 
 @Composable
 fun ArtistScreen(
@@ -51,7 +52,7 @@ fun ArtistScreen(
                     Text("${artistTracks.size} songs · ${albums.size} albums", style = MaterialTheme.typography.bodyMedium.copy(color = TextMedium), modifier = Modifier.padding(top = 6.dp))
                     Spacer(Modifier.height(18.dp))
                     Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                        Surface(onClick = onPlay, shape = RoundedCornerShape(24.dp), colors = ButtonDefaults.buttonColors(containerColor = Accent), modifier = Modifier.height(44.dp)) {
+                        Surface(onClick = onPlay, shape = RoundedCornerShape(24.dp), color = Accent, contentColor = Color.White, modifier = Modifier.height(44.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 24.dp)) {
                                 Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(8.dp))

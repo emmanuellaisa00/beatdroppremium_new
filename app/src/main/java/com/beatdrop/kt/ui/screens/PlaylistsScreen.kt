@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.beatdrop.kt.ui.components.BackButton
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.BorderStroke
 
 @Composable
 fun PlaylistsScreen(
@@ -52,7 +53,7 @@ fun PlaylistsScreen(
                     }
                 }
             }
-            items(playlists) { (name, count) ->
+            items(playlists, key = { it.first }) { (name, count) ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().clickable { onOpen(name) }.padding(horizontal = 20.dp, vertical = 10.dp),

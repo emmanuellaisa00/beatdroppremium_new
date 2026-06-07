@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.BorderStroke
 
 /**
  * Post-update changelog sheet.

@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.beatdrop.kt.data.Track
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.ui.unit.sp
 
 /**
  * Long-press action sheet for LOCAL tracks.
@@ -88,7 +89,7 @@ fun TrackActionsSheet(
                     }
                 }
 
-                HorizontalDivider(color = GlassBorder, modifier = Modifier.padding(horizontal = 24.dp))
+                Divider(color = GlassBorder, modifier = Modifier.padding(horizontal = 24.dp))
 
                 Spacer(Modifier.height(8.dp))
 
@@ -99,7 +100,7 @@ fun TrackActionsSheet(
                     Triple(Icons.Filled.PlaylistAdd, "Add to playlist", onAddToPlaylist),
                     Triple(Icons.Filled.Album, "Go to album", onGoToAlbum),
                     Triple(Icons.Filled.Person, "Go to artist", onGoToArtist),
-                    Triple(Icons.Filled.Ringtone, "Set as ringtone", onSetAsRingtone),
+                    Triple(Icons.Filled.Notifications, "Set as ringtone", onSetAsRingtone),
                     Triple(Icons.Filled.Edit, "Edit tags", onEditTags),
                     Triple(Icons.Filled.Share, "Share", onShare),
                     Triple(Icons.Filled.Info, "Details", onDetails),

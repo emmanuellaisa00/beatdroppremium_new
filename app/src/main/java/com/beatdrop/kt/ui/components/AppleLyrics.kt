@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.clickable
 
 /**
  * Inline lyrics view for NowPlaying screen (Apple Music style).

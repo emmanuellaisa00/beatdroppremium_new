@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.beatdrop.kt.data.SampleData
 import com.beatdrop.kt.ui.components.*
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.BorderStroke
 
 @Composable
 fun ChannelScreen(
@@ -49,7 +50,7 @@ fun ChannelScreen(
                     Text("${channelTracks.size} videos · BeatDrop Catalogue", style = MaterialTheme.typography.bodyMedium.copy(color = TextMedium), modifier = Modifier.padding(top = 6.dp))
                     Spacer(Modifier.height(16.dp))
                     Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                        Surface(onClick = {}, shape = RoundedCornerShape(24.dp), colors = ButtonDefaults.buttonColors(containerColor = Accent), modifier = Modifier.height(40.dp)) {
+                        Surface(onClick = {}, shape = RoundedCornerShape(24.dp), color = Accent, contentColor = Color.White, modifier = Modifier.height(40.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 20.dp)) {
                                 Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))

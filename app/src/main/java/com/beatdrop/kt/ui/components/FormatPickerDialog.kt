@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.unit.sp
 
 /**
  * Download quality / format picker dialog.

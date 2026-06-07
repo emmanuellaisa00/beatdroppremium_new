@@ -2,6 +2,7 @@ package com.beatdrop.kt.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -14,6 +15,7 @@ import com.beatdrop.kt.data.SampleData
 import com.beatdrop.kt.ui.components.BackButton
 import com.beatdrop.kt.ui.components.TrackRow
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.lazy.itemsIndexed
 
 @Composable
 fun QueueScreen(
@@ -48,7 +50,7 @@ fun QueueScreen(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.weight(1f)) {
+                LazyColumn(modifier = Modifier.weight(1f)) {
                     itemsIndexed(tracks) { i, t ->
                         TrackRow(
                             track = t,

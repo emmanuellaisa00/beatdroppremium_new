@@ -28,6 +28,7 @@ import com.beatdrop.kt.data.Album
 import com.beatdrop.kt.data.Playlist
 import com.beatdrop.kt.data.Track
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.BorderStroke
 
 // ═══════════════════════════════════════════════════
 // BOTTOM DOCK — 4 tabs: Discover, Search, Library, Radio
@@ -61,7 +62,7 @@ fun BottomDock(
                 val isActive = index == activeTab
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .weight(1f)
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onTabSelected(index) },

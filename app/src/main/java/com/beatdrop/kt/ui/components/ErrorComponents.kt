@@ -22,6 +22,7 @@ import com.beatdrop.kt.data.BeatDropError
 import com.beatdrop.kt.data.icon
 import com.beatdrop.kt.data.retryable
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.BorderStroke
 
 /**
  * Full-screen error state — replaces screen content when data fails to load.

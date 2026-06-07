@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.beatdrop.kt.data.SampleData
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun LyricsScreen(
@@ -125,7 +127,7 @@ fun LyricsScreen(
             shadowElevation = 24.dp,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(horizontal = 16.dp, bottom = 22.dp)
+                .padding(start = 16.dp, end = 16.dp, bottom = 22.dp)
                 .fillMaxWidth()
                 .height(64.dp),
         ) {

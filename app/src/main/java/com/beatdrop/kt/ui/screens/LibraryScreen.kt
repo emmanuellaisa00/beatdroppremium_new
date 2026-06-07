@@ -45,7 +45,14 @@ fun LibraryScreen(
                 )
             }
         }
-        item { Spacer(Modifier.height(24.dp)); FilterPills(filters, filterIndex) { filterIndex = it } }
+        item {
+            Spacer(Modifier.height(24.dp))
+            FilterPills(
+                pills = filters,
+                selectedIndex = filterIndex,
+                onSelected = { filterIndex = it },
+            )
+        }
         item { Spacer(Modifier.height(22.dp)); QuickAccessGrid(SampleData.libraryQuickAccess, onOpenAlbum) }
         item {
             Spacer(Modifier.height(34.dp)); SectionHeader("Recently played")

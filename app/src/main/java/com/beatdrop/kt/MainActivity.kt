@@ -95,7 +95,7 @@ fun BeatDropApp() {
             enter = slideInVertically { it },
             exit = slideOutVertically { it },
             modifier = Modifier.align(Alignment.BottomCenter)
-                .padding(horizontal = 16.dp, bottom = 22.dp)
+                .padding(start = 16.dp, end = 16.dp, bottom = 22.dp)
                 .zIndex(4f),
         ) {
             BottomDock(activeTab = activeTab, onTabSelected = { tab ->

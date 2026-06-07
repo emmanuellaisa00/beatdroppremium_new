@@ -22,6 +22,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.beatdrop.kt.data.Track
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.unit.sp
 
 /**
  * Long-press action sheet for ONLINE / catalogue tracks.
@@ -103,7 +105,7 @@ fun OnlineTrackActionsSheet(
                     }
                 }
 
-                HorizontalDivider(color = GlassBorder, modifier = Modifier.padding(horizontal = 24.dp))
+                Divider(color = GlassBorder, modifier = Modifier.padding(horizontal = 24.dp))
 
                 Spacer(Modifier.height(8.dp))
 

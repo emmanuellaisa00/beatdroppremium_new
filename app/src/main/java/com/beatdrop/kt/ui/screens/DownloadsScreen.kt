@@ -18,6 +18,8 @@ import com.beatdrop.kt.ui.components.BackButton
 import com.beatdrop.kt.ui.components.SectionHeader
 import com.beatdrop.kt.ui.components.TrackRow
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 @Composable
 fun DownloadsScreen(

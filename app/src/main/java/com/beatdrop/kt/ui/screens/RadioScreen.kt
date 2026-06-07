@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.beatdrop.kt.ui.theme.*
+import com.beatdrop.kt.ui.components.IdentityBar
+import androidx.compose.foundation.BorderStroke
 
 @Composable
 fun RadioScreen(

@@ -25,6 +25,12 @@ import com.beatdrop.kt.ui.components.BackButton
 import com.beatdrop.kt.ui.components.ErrorBanner
 import com.beatdrop.kt.ui.theme.*
 
+private sealed class ResolveState {
+    data object Loading : ResolveState()
+    data class Resolved(val title: String, val artist: String) : ResolveState()
+    data class Error(val error: BeatDropError) : ResolveState()
+}
+
 @Composable
 fun ClipUrlScreen(
     url: String = "",
@@ -32,12 +38,6 @@ fun ClipUrlScreen(
     onExpandPlayer: () -> Unit = {},
 ) {
     var state by remember { mutableStateOf<ResolveState>(ResolveState.Loading) }
-
-    sealed class ResolveState {
-        data object Loading : ResolveState()
-        data class Resolved(val title: String, val artist: String) : ResolveState()
-        data class Error(val error: BeatDropError) : ResolveState()
-    }
 
     // Simulate resolver with error handling
     LaunchedEffect(url) {

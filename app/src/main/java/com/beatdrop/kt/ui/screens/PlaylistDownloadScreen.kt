@@ -23,6 +23,7 @@ import com.beatdrop.kt.data.safeCall
 import com.beatdrop.kt.ui.components.BackButton
 import com.beatdrop.kt.ui.components.ErrorBanner
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.foundation.BorderStroke
 
 @Composable
 fun PlaylistDownloadScreen(

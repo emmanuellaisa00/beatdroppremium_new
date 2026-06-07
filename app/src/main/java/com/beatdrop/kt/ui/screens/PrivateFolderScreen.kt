@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.beatdrop.kt.ui.components.BackButton
 import com.beatdrop.kt.ui.theme.*
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun PrivateFolderScreen(onBack: () -> Unit) {

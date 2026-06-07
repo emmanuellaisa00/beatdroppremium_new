@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
+
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.beatdrop.kt.data.BeatDropError
@@ -37,12 +37,14 @@ fun <T, K> rememberScreenState(
     key: K,
     loader: suspend (K) -> T,
 ): ScreenState<T> {
-    return produceState<ScreenState<T>>(initialValue = ScreenState.Loading, key1 = key) {
-        value = when (val result = safeCall { loader(key) }) {
+    var state by remember { mutableStateOf<ScreenState<T>>(ScreenState.Loading) }
+    LaunchedEffect(key) {
+        state = when (val result = safeCall { loader(key) }) {
             is BeatDropResult.Success -> ScreenState.Success(result.data)
             is BeatDropResult.Error -> ScreenState.Error(result.error)
         }
     }
+    return state
 }
 
 /**
@@ -52,12 +54,14 @@ fun <T, K> rememberScreenState(
 fun <T> rememberScreenState(
     loader: suspend () -> T,
 ): ScreenState<T> {
-    return produceState<ScreenState<T>>(initialValue = ScreenState.Loading) {
-        value = when (val result = safeCall { loader() }) {
+    var state by remember { mutableStateOf<ScreenState<T>>(ScreenState.Loading) }
+    LaunchedEffect(Unit) {
+        state = when (val result = safeCall { loader() }) {
             is BeatDropResult.Success -> ScreenState.Success(result.data)
             is BeatDropResult.Error -> ScreenState.Error(result.error)
         }
     }
+    return state
 }
 
 /**
