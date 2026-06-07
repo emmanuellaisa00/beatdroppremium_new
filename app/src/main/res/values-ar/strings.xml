@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Arabic (العربية) localization -->
+<resources>
+    <string name="app_name">BeatDrop</string>
+
+    <string name="tab_library">المكتبة</string>
+    <string name="tab_discover">الرئيسية</string>
+    <string name="tab_search">بحث</string>
+    <string name="tab_radio">راديو</string>
+    <string name="tab_settings">الإعدادات</string>
+
+    <string name="section_made_for_you">مصمم لك</string>
+    <string name="section_hot_trending">الأكثر رواجاً</string>
+    <string name="section_quick_picks">اختيارات سريعة</string>
+    <string name="section_albums">الألبومات</string>
+    <string name="section_songs">الأغاني</string>
+    <string name="section_playlists">قوائم التشغيل</string>
+    <string name="section_top_result">أفضل نتيجة</string>
+    <string name="section_in_your_library">في مكتبتك</string>
+    <string name="section_recent_searches">عمليات البحث الأخيرة</string>
+    <string name="section_browse_all">تصفح الكل</string>
+
+    <string name="play">تشغيل</string>
+    <string name="pause">إيقاف مؤقت</string>
+    <string name="shuffle">عشوائي</string>
+    <string name="cancel">إلغاء</string>
+    <string name="save">حفظ</string>
+    <string name="download">تنزيل</string>
+    <string name="downloaded">تم التنزيل</string>
+    <string name="retry">إعادة المحاولة</string>
+    <string name="accept_continue">قبول ومتابعة</string>
+
+    <string name="search_hybrid_placeholder">ابحث في المكتبة أو في كتالوج BeatDrop…</string>
+    <string name="search_online_placeholder">ابحث عن أغاني وفنانين وألبومات…</string>
+    <string name="library_search_placeholder">ابحث في المكتبة أو عبر الإنترنت…</string>
+
+    <string name="empty_no_results">لا توجد نتائج لـ &#8220;%1$s&#8221;</string>
+    <string name="empty_try_different">جرب كلمات أخرى أو تحقق من الاتصال</string>
+    <string name="empty_offline">أنت غير متصل</string>
+    <string name="empty_offline_discover">اتصل بالإنترنت لاكتشاف الموسيقى الرائجة.</string>
+    <string name="empty_no_synced_lyrics">لا توجد كلمات متزامنة متاحة.</string>
+
+    <string name="album_download_all">تنزيل الألبوم</string>
+    <string name="playlist_loaded_from_search">تم تحميل %1$s من بحث جديد.</string>
+    <string name="playlist_load_failed">تعذر تحميل %1$s. تحقق من اتصالك وحاول مرة أخرى.</string>
+
+    <string name="terms_title">قبل المتابعة</string>
+    <string name="terms_subtitle">الخصوصية والشروط · قراءة في 30 ثانية</string>
+    <string name="terms_read_more">قراءة السياسة كاملة ↓</string>
+    <string name="terms_read_less">عرض أقل ↑</string>
+</resources>

@@ -1,190 +1,126 @@
 package com.beatdrop.kt.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.beatdrop.kt.ui.components.BackButton
-import com.beatdrop.kt.ui.theme.*
-import java.text.SimpleDateFormat
-import java.util.*
+import com.beatdrop.kt.ui.components.Ic
+import com.beatdrop.kt.ui.components.ScreenScaffold
+import com.beatdrop.kt.ui.components.glassCard
+import com.beatdrop.kt.DebugLog
+import com.beatdrop.kt.PlayerViewModel
+import com.beatdrop.kt.ui.theme.LocalAppColors
 
-data class LogEntry(
-    val timestamp: Long = System.currentTimeMillis(),
-    val level: LogLevel,
-    val tag: String,
-    val message: String,
-    val throwable: Throwable? = null,
-)
+/**
+ * On-screen diagnostic log. Shows exactly what happens during search → resolve →
+ * play (which client resolved, HTTP codes, playability reasons, the final GET,
+ * ExoPlayer state/errors). Copy/Share buttons make it easy to send back for help.
+ */
+@Composable
+fun DebugLogScreen(vm: PlayerViewModel, onBack: () -> Unit) {
+    val C = LocalAppColors.current
+    val ctx = LocalContext.current
+    val entries by vm.debugLog.collectAsState()
+    val listState = rememberLazyListState()
 
-enum class LogLevel { VERBOSE, DEBUG, INFO, WARN, ERROR }
-
-object AppLog {
-    private val _entries = mutableStateListOf<LogEntry>()
-    val entries: List<LogEntry> get() = _entries.toList()
-
-    fun v(tag: String, msg: String) = add(LogLevel.VERBOSE, tag, msg)
-    fun d(tag: String, msg: String) = add(LogLevel.DEBUG, tag, msg)
-    fun i(tag: String, msg: String) = add(LogLevel.INFO, tag, msg)
-    fun w(tag: String, msg: String, t: Throwable? = null) = add(LogLevel.WARN, tag, msg, t)
-    fun e(tag: String, msg: String, t: Throwable? = null) = add(LogLevel.ERROR, tag, msg, t)
-
-    private fun add(level: LogLevel, tag: String, msg: String, t: Throwable? = null) {
-        _entries.add(0, LogEntry(level = level, tag = tag, message = msg, throwable = t))
-        if (_entries.size > 500) _entries.removeLast()
+    // Auto-scroll to the newest line.
+    LaunchedEffect(entries.size) {
+        if (entries.isNotEmpty()) listState.animateScrollToItem(entries.size - 1)
     }
 
-    fun clear() { _entries.clear() }
-}
-
-@Composable
-fun DebugLogScreen(
-    onBack: () -> Unit = {},
-) {
-    val entries = AppLog.entries
-    val errorCount = entries.count { it.level == LogLevel.ERROR }
-
-    Box(modifier = Modifier.fillMaxSize().background(Background)) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Filter bar
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
-                    .padding(top = 90.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "${entries.size} entries",
-                    style = MaterialTheme.typography.bodySmall.copy(color = TextMedium),
-                )
-                if (errorCount > 0) {
-                    Spacer(Modifier.width(12.dp))
-                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFF375F).copy(alpha = 0.15f)) {
-                        Text(
-                            "$errorCount errors",
-                            style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFFFF6B6B), fontWeight = FontWeight.Bold),
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        )
-                    }
-                }
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = { AppLog.clear() }) {
-                    Icon(Icons.Filled.DeleteSweep, null, tint = TextLow, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Clear", style = MaterialTheme.typography.bodySmall.copy(color = TextLow))
-                }
-            }
-
-            // Log list
-            if (entries.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Filled.Terminal, null, tint = TextHint, modifier = Modifier.size(48.dp))
-                        Spacer(Modifier.height(12.dp))
-                        Text("No log entries", style = MaterialTheme.typography.bodyMedium.copy(color = TextLow))
-                        Text("Errors and events will appear here", style = MaterialTheme.typography.bodySmall.copy(color = TextHint), modifier = Modifier.padding(top = 4.dp))
-                    }
-                }
-            } else {
-                LazyColumn(modifier = Modifier.weight(1f).padding(bottom = 40.dp)) {
-                    items(entries, key = { it.timestamp }) { entry ->
-                        val levelColor = when (entry.level) {
-                            LogLevel.VERBOSE -> TextHint
-                            LogLevel.DEBUG -> Color(0xFF64B5F6)
-                            LogLevel.INFO -> Color(0xFF81C784)
-                            LogLevel.WARN -> Color(0xFFFFB74D)
-                            LogLevel.ERROR -> Color(0xFFFF6B6B)
-                        }
-                        val sdf = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                                .then(
-                                    if (entry.level == LogLevel.ERROR)
-                                        Modifier.background(Color(0xFFFF375F).copy(alpha = 0.06f), RoundedCornerShape(6.dp)).padding(8.dp)
-                                    else Modifier.padding(horizontal = 8.dp)
-                                ),
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    sdf.format(Date(entry.timestamp)),
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontFamily = FontFamily.Monospace,
-                                        color = TextHint,
-                                        fontSize = 10.sp,
-                                    ),
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    entry.level.name.take(1),
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Black,
-                                        color = levelColor,
-                                        fontSize = 10.sp,
-                                    ),
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    entry.tag,
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TextMedium,
-                                        fontSize = 10.sp,
-                                    ),
-                                )
-                            }
-                            Text(
-                                entry.message,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    color = levelColor,
-                                    fontSize = 11.sp,
-                                ),
-                                modifier = Modifier.padding(top = 2.dp),
-                            )
-                            entry.throwable?.let { t ->
-                                Text(
-                                    t.stackTraceToString().take(200),
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontFamily = FontFamily.Monospace,
-                                        color = TextLow,
-                                        fontSize = 9.sp,
-                                    ),
-                                    modifier = Modifier.padding(top = 2.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Top bar
+    ScreenScaffold(ambientColor = C.glassAmbient) {
+    Column(
+        Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 12.dp)
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            Modifier.fillMaxWidth().padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            BackButton(onClick = onBack)
-            Text("Debug Log", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-            Box(Modifier.size(36.dp))
+            IconButton(onClick = onBack) { Icon(Ic.Back, "Back", tint = C.text) }
+            Text("Debug Log", color = C.text, fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f).padding(start = 4.dp))
+            Text("${entries.size}", color = C.textTertiary, fontSize = 13.sp,
+                modifier = Modifier.padding(end = 6.dp))
+            IconButton(onClick = { copyToClipboard(ctx, vm.dumpDebugLog()) }) {
+                Icon(Ic.Copy, "Copy", tint = C.text)
+            }
+            IconButton(onClick = { shareText(ctx, vm.dumpDebugLog()) }) {
+                Icon(Ic.Share, "Share", tint = C.text)
+            }
+            IconButton(onClick = { vm.clearDebugLog() }) {
+                Icon(Ic.Delete, "Clear", tint = C.text)
+            }
+        }
+
+        Text(
+            "Tip: tap Clear, then search a song and tap a result. Then Copy/Share this log.",
+            color = C.textTertiary, fontSize = 12.sp,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+        )
+
+        if (entries.isEmpty()) {
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Text("No log entries yet.", color = C.textTertiary, fontSize = 14.sp)
+            }
+        } else {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize()
+                    .glassCard(radius = 20.dp)
+                    .background(Color(0xAA0B0B0F), RoundedCornerShape(20.dp))
+                    .padding(10.dp),
+                contentPadding = PaddingValues(bottom = 24.dp),
+            ) {
+                items(entries) { e ->
+                    val color = when (e.level) {
+                        DebugLog.Level.E -> Color(0xFFFF6B6B)
+                        DebugLog.Level.W -> Color(0xFFFFD166)
+                        DebugLog.Level.I -> Color(0xFF8EE6A0)
+                        DebugLog.Level.D -> Color(0xFF9AA0AA)
+                    }
+                    Text(
+                        "${e.clock} ${e.level} [${e.tag}] ${e.msg}",
+                        color = color,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        lineHeight = 15.sp,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+                    )
+                }
+            }
         }
     }
+    }
+}
+
+private fun copyToClipboard(ctx: Context, text: String) {
+    val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    cm.setPrimaryClip(ClipData.newPlainText("BeatDrop debug log", text))
+}
+
+private fun shareText(ctx: Context, text: String) {
+    val send = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, text)
+        putExtra(Intent.EXTRA_SUBJECT, "BeatDrop debug log")
+    }
+    ctx.startActivity(Intent.createChooser(send, "Share debug log").apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    })
 }

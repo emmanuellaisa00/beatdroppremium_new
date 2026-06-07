@@ -1,147 +1,256 @@
 package com.beatdrop.kt.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.beatdrop.kt.ui.components.BackButton
-import com.beatdrop.kt.ui.theme.*
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.unit.sp
+import com.beatdrop.kt.ui.components.Ic
+import com.beatdrop.kt.PlayerViewModel
+import com.beatdrop.kt.ui.components.GlassHeader
+import com.beatdrop.kt.ui.components.ScreenScaffold
+import com.beatdrop.kt.ui.components.TintedGlassButton
+import com.beatdrop.kt.ui.components.glassCard
+import com.beatdrop.kt.ui.components.glassRow
+import com.beatdrop.kt.ui.components.pressableScale
+import com.beatdrop.kt.ui.theme.LocalAppColors
+import com.beatdrop.kt.ui.theme.Radius
+import com.beatdrop.kt.ui.theme.Spacing
+import com.beatdrop.kt.ui.theme.Type
 
 @Composable
-fun PlaylistsScreen(
-    onBack: () -> Unit = {},
-    onOpen: (String) -> Unit = {},
-) {
-    val playlists = listOf(
-        "Liked Songs" to 42,
-        "Workout Bangers" to 18,
-        "Late Night Vibes" to 31,
-        "My Playlist #4" to 14,
-        "Road Trip" to 26,
-        "Throwbacks" to 53,
-    )
+fun PlaylistsScreen(vm: PlayerViewModel, onBack: () -> Unit = {}, onOpen: (String) -> Unit) {
+    val C = LocalAppColors.current
+    val playlists by vm.playlists.collectAsState()
+    val liked by vm.liked.collectAsState()
+    var showCreate by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
 
-    Box(modifier = Modifier.fillMaxSize().background(Background)) {
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(top = 96.dp, bottom = 40.dp)) {
-            // Create new button
-            item {
-                Surface(
-                    onClick = { /* create playlist dialog */ },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-                    shape = RoundedCornerShape(16.dp), color = SurfaceTile, border = BorderStroke(1.dp, GlassBorder),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(16.dp)) {
-                        Box(modifier = Modifier.size(46.dp).background(Accent, CircleShape), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Filled.Add, null, tint = Color.White, modifier = Modifier.size(20.dp))
+    ScreenScaffold(ambientColor = C.glassGlow, ambientIntensity = 0.14f) {
+        Column(Modifier.fillMaxSize()) {
+            GlassHeader(
+                title = "Playlists",
+                subtitle = "${playlists.size + 1} libraries",
+                onBack = onBack,
+                leadingIcon = Ic.Library,
+                trailing = {
+                    IconButton(onClick = { showCreate = true }) {
+                        Icon(Ic.Add, "New playlist", tint = C.accent)
+                    }
+                },
+            )
+            LazyColumn(
+                contentPadding = PaddingValues(
+                    start = Spacing.lg, end = Spacing.lg, top = Spacing.sm, bottom = 190.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                // Built-in "Liked Songs"
+                item {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .glassRow()
+                            .pressableScale(onClick = { onOpen(LIKED_NAME) })
+                            .padding(horizontal = 12.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            Modifier.size(48.dp).clip(RoundedCornerShape(Radius.sm)).background(C.accentSoft),
+                            Alignment.Center,
+                        ) {
+                            Icon(Ic.Heart, null, tint = C.accent, modifier = Modifier.size(24.dp))
                         }
-                        Spacer(Modifier.width(16.dp))
-                        Text("Create a Playlist", fontWeight = FontWeight.ExtraBold, color = Color.White)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Liked Songs", style = Type.title3, color = C.text, fontWeight = FontWeight.SemiBold)
+                            Text("${liked.size} songs", style = Type.footnote, color = C.textSecondary)
+                        }
                     }
                 }
-            }
-            itemsIndexed(playlists) { index, pair ->
-                val name = pair.first
-                val count = pair.second
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().clickable { onOpen(name) }.padding(horizontal = 20.dp, vertical = 10.dp),
-                ) {
-                    Box(modifier = Modifier.size(52.dp).background(CoverGradients.get(index + 1), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.QueueMusic, null, tint = Color.White.copy(alpha = 0.80f), modifier = Modifier.size(24.dp))
+                items(playlists.keys.toList()) { name ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .glassRow()
+                            .pressableScale(onClick = { onOpen(name) })
+                            .padding(horizontal = 12.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            Modifier.size(48.dp).clip(RoundedCornerShape(Radius.sm)).background(C.bg3),
+                            Alignment.Center,
+                        ) {
+                            Icon(Ic.Playlist, null, tint = C.textSecondary)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                name, style = Type.title3, color = C.text,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
+                            Text("${playlists[name]?.size ?: 0} songs", style = Type.footnote, color = C.textSecondary)
+                        }
+                        IconButton(onClick = { vm.deletePlaylist(name) }) {
+                            Icon(Ic.Delete, "Delete", tint = C.textTertiary, modifier = Modifier.size(18.dp))
+                        }
                     }
-                    Spacer(Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(name, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                        Text("$count songs", color = TextLow, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
-                    }
-                    Text("›", color = Color.White.copy(alpha = 0.35f), fontWeight = FontWeight.Light, style = MaterialTheme.typography.headlineMedium)
                 }
             }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
-        ) {
-            BackButton(onClick = onBack)
-            Text("Playlists", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-            Box(Modifier.size(36.dp))
+
+        if (showCreate) {
+            AlertDialog(
+                onDismissRequest = { showCreate = false },
+                confirmButton = {
+                    TextButton(onClick = { vm.createPlaylist(newName); newName = ""; showCreate = false }) { Text("Create") }
+                },
+                dismissButton = { TextButton(onClick = { showCreate = false }) { Text("Cancel") } },
+                title = { Text("New playlist") },
+                text = {
+                    OutlinedTextField(value = newName, onValueChange = { newName = it }, singleLine = true, placeholder = { Text("Name") })
+                },
+            )
         }
     }
 }
 
-@Composable
-fun PlaylistDetailScreen(
-    playlistName: String = "Playlist",
-    onBack: () -> Unit = {},
-    onTrackClick: () -> Unit = {},
-    onOpenArtist: (String) -> Unit = {},
-    onOpenAlbum: (String) -> Unit = {},
-) {
-    val tracks = com.beatdrop.kt.data.SampleData.albumTracks
-    var isShuffled by remember { mutableStateOf(false) }
+const val LIKED_NAME = "__liked__"
 
-    Box(modifier = Modifier.fillMaxSize().background(Background)) {
-        androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.fillMaxSize()) {
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 110.dp, start = 20.dp, end = 20.dp, bottom = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Box(modifier = Modifier.size(180.dp).background(CoverGradients.get(3), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.QueueMusic, null, tint = Color.White.copy(alpha = 0.40f), modifier = Modifier.size(64.dp))
+@Composable
+fun PlaylistDetailScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit) {
+    val C = LocalAppColors.current
+    val playlists by vm.playlists.collectAsState()
+    val liked by vm.liked.collectAsState()
+    val tracksAll by vm.tracks.collectAsState()
+    val current by vm.current.collectAsState()
+    var sheetTrack by remember { mutableStateOf<com.beatdrop.kt.data.Track?>(null) }
+
+    val isLiked = name == LIKED_NAME
+    val title = if (isLiked) "Liked Songs" else name
+    val tracks = remember(name, playlists, liked, tracksAll) {
+        if (isLiked) tracksAll.filter { liked.contains(it.id) } else vm.playlistTracks(name)
+    }
+
+    ScreenScaffold(ambientColor = C.glassAmbient) {
+        Column(Modifier.fillMaxSize()) {
+            GlassHeader(
+                title = title,
+                subtitle = "${tracks.size} songs",
+                onBack = onBack,
+                leadingIcon = if (isLiked) Ic.Heart else Ic.Playlist,
+            )
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = Spacing.lg, end = Spacing.lg, top = Spacing.sm, bottom = 190.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                item {
+                    Row(
+                        Modifier.padding(top = 4.dp, bottom = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TintedGlassButton(modifier = Modifier.height(48.dp).width(140.dp)) {
+                            Row(
+                                Modifier.fillMaxSize().pressableScale(
+                                    onClick = { if (tracks.isNotEmpty()) vm.playList(tracks, tracks.first().id) },
+                                ),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Ic.Play, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Play", color = androidx.compose.ui.graphics.Color.White, style = Type.headline)
+                            }
+                        }
+                        // Downloaded-status badge — green check pill when
+                        // every track in this playlist exists on the
+                        // device (any track with a non-null `data` path is
+                        // on-device). User asked: 'when you save song it
+                        // is supposed to save it to libraries and never
+                        // loose it next time entering — playing all should
+                        // have a tick on download.'
+                        val allOnDevice = remember(tracks) {
+                            tracks.isNotEmpty() && tracks.all { !it.data.isNullOrBlank() }
+                        }
+                        if (allOnDevice) {
+                            Row(
+                                Modifier
+                                    .height(48.dp)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .background(C.accent.copy(alpha = 0.18f))
+                                    .padding(horizontal = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Ic.Check, "All downloaded",
+                                    tint = C.accent, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("All saved", color = C.accent,
+                                    fontSize = 13.sp,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                            }
+                        }
                     }
-                    Spacer(Modifier.height(18.dp))
-                    Text(playlistName, style = MaterialTheme.typography.headlineMedium)
-                    Text("${tracks.size} songs", style = MaterialTheme.typography.bodyMedium.copy(color = TextMedium), modifier = Modifier.padding(top = 6.dp))
-                    Spacer(Modifier.height(18.dp))
-                    Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                        Surface(onClick = onTrackClick, shape = CircleShape, color = Accent, shadowElevation = 12.dp, modifier = Modifier.size(52.dp)) {
-                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(24.dp)) }
+                }
+                if (tracks.isEmpty()) {
+                    item {
+                        Box(
+                            Modifier.fillMaxWidth().glassCard(radius = Radius.lg).padding(36.dp),
+                            Alignment.Center,
+                        ) { Text("No songs yet.", style = Type.body, color = C.textSecondary) }
+                    }
+                }
+                itemsIndexed(tracks, key = { _, t -> t.id }) { index, t ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .glassRow()
+                            .pressableScale(
+                                onClick = { vm.playList(tracks, t.id) },
+                                onLongClick = { sheetTrack = t },
+                            )
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("${index + 1}", style = Type.footnote, color = C.textTertiary, modifier = Modifier.width(28.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                t.title,
+                                style = Type.title3,
+                                color = if (current?.id == t.id) C.accent else C.text,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                t.artist, style = Type.footnote, color = C.textSecondary,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
                         }
-                        Spacer(Modifier.width(16.dp))
-                        Surface(onClick = { isShuffled = !isShuffled }, shape = CircleShape, color = SurfaceTile, border = BorderStroke(1.dp, GlassBorder), modifier = Modifier.size(42.dp)) {
-                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Shuffle, null, tint = if (isShuffled) Accent else TextHigh, modifier = Modifier.size(18.dp)) }
-                        }
-                        Spacer(Modifier.width(10.dp))
-                        Surface(onClick = {}, shape = CircleShape, color = SurfaceTile, border = BorderStroke(1.dp, GlassBorder), modifier = Modifier.size(42.dp)) {
-                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Download, null, tint = TextHigh, modifier = Modifier.size(18.dp)) }
+                        if (!isLiked) {
+                            IconButton(onClick = { vm.removeFromPlaylist(name, t.id) }) {
+                                Icon(Ic.Delete, "Remove", tint = C.textTertiary, modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
                 }
             }
-            items(tracks.size) { i ->
-                com.beatdrop.kt.ui.components.TrackRow(
-                    track = tracks[i],
-                    index = i,
-                    onClick = onTrackClick,
-                    onArtistClick = { onOpenArtist(tracks[i].artist) },
-                    onAlbumClick = { if (tracks[i].album.isNotEmpty()) onOpenAlbum(tracks[i].album) },
-                )
-            }
-            item { Spacer(Modifier.height(40.dp)) }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
-        ) {
-            BackButton(onClick = onBack)
-            Text(playlistName, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-            IconButton(onClick = {}, modifier = Modifier.size(36.dp)) { Icon(Icons.Filled.MoreVert, null, tint = Color.White, modifier = Modifier.size(18.dp)) }
+        sheetTrack?.let { tk ->
+            com.beatdrop.kt.ui.components.TrackActionsSheet(vm, tk, onDismiss = { sheetTrack = null })
         }
     }
 }

@@ -1,43 +1,129 @@
 package com.beatdrop.kt.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.beatdrop.kt.ui.components.BackButton
-import com.beatdrop.kt.ui.theme.*
+import androidx.compose.ui.unit.sp
+import com.beatdrop.kt.ui.components.Ic
+import com.beatdrop.kt.ui.components.ScreenScaffold
+import com.beatdrop.kt.playback.EqEngine
+import com.beatdrop.kt.ui.components.pressableScale
+import com.beatdrop.kt.ui.components.GlassCard
+import com.beatdrop.kt.ui.theme.LocalAppColors
+import com.beatdrop.kt.ui.theme.Radius
 
+/** Real EQ UI backed by android.media.audiofx.Equalizer (native DSP). Liquid Glass cards. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EqScreen(onBack: () -> Unit) {
-    val bands = listOf("60Hz", "230Hz", "910Hz", "3.6kHz", "14kHz")
-    val gains = remember { mutableStateListOf(0.5f, 0.7f, 0.6f, 0.4f, 0.8f) }
+    val C = LocalAppColors.current
+    val enabled by EqEngine.enabled.collectAsState()
+    val bands by EqEngine.bands.collectAsState()
+    val presets by EqEngine.presets.collectAsState()
+    val bass by EqEngine.bassStrength.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize().background(Background)) {
-        Column(modifier = Modifier.fillMaxSize().padding(top = 96.dp).padding(horizontal = 20.dp)) {
-            Text("Equalizer", style = MaterialTheme.typography.headlineLarge.copy(color = Color.White))
-            Spacer(Modifier.height(8.dp))
-            Text("Adjust audio frequencies", color = TextMedium, style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(32.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
-                bands.forEachIndexed { i, label ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Slider(value = gains[i], onValueChange = { gains[i] = it }, modifier = Modifier.height(160.dp).width(40.dp), colors = SliderDefaults.colors(thumbColor = Accent, activeTrackColor = Accent))
-                        Spacer(Modifier.height(8.dp))
-                        Text(label, color = TextLow, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+    ScreenScaffold {
+    LazyColumn(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp), contentPadding = PaddingValues(bottom = 190.dp)) {
+        item {
+            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) { Icon(Ic.Back, "Back", tint = C.text) }
+                Icon(Ic.Equalizer, null, tint = C.accent, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Equalizer", color = C.text, fontWeight = FontWeight.Black, fontSize = 22.sp, modifier = Modifier.weight(1f))
+                Switch(checked = enabled, onCheckedChange = { EqEngine.setEnabled(it) },
+                    colors = SwitchDefaults.colors(checkedTrackColor = C.accent))
+            }
+        }
+
+        if (bands.isEmpty()) {
+            item {
+                GlassCard {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
+                        Text(
+                            "EQ initialises once playback starts.\nPlay a track, then return here.",
+                            color = C.textSecondary, textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            }
+            return@LazyColumn
+        }
+
+        // Band sliders in a glass card
+        item {
+            GlassCard {
+                bands.forEach { band ->
+                    val db = band.levelMb / 100f
+                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(freqLabel(band.centerFreqHz), color = C.textSecondary, fontSize = 12.sp, modifier = Modifier.width(42.dp))
+                        Slider(
+                            value = band.levelMb.toFloat(),
+                            onValueChange = { EqEngine.setBandLevel(band.index, it.toInt().toShort()) },
+                            valueRange = band.minMb.toFloat()..band.maxMb.toFloat(),
+                            enabled = enabled,
+                            modifier = Modifier.weight(1f),
+                            colors = SliderDefaults.colors(thumbColor = C.accent, activeTrackColor = C.accent),
+                        )
+                        Text("%+.0f dB".format(db), color = C.text, fontSize = 11.sp, modifier = Modifier.width(50.dp), textAlign = TextAlign.End)
                     }
                 }
             }
         }
-        Row(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            BackButton(onClick = onBack)
-            Text("Equalizer", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-            Box(Modifier.size(36.dp))
+
+        // Bass boost in a glass card
+        item {
+            GlassCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Bass Boost", color = C.text, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Text("${bass / 10}%", color = C.accent, fontWeight = FontWeight.Bold)
+                }
+                Slider(
+                    value = bass.toFloat(), onValueChange = { EqEngine.setBassStrength(it.toInt()) },
+                    valueRange = 0f..1000f, enabled = enabled,
+                    colors = SliderDefaults.colors(thumbColor = C.accent, activeTrackColor = C.accent),
+                )
+            }
+        }
+
+        // Presets in a glass card
+        item {
+            Text("PRESETS", color = C.textTertiary, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 6.dp))
+            FlowRow(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                presets.forEachIndexed { i, name ->
+                    val shape = RoundedCornerShape(20.dp)
+                    Box(
+                        Modifier.clip(shape)
+                            .background(if (C.isDark) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.5f))
+                            .border(0.5.dp, C.glassBorder, shape)
+                            .pressableScale(onClick = { EqEngine.setEnabled(true); EqEngine.applyPreset(i.toShort()) })
+                            .padding(horizontal = 16.dp, vertical = 9.dp),
+                    ) {
+                        Text(name, color = C.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
         }
     }
+    }
 }
+
+@Composable
+
+private fun freqLabel(hz: Int): String = if (hz >= 1000) "${hz / 1000}k" else "$hz"

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- French (Français) localization -->
+<resources>
+    <string name="app_name">BeatDrop</string>
+
+    <string name="tab_library">Bibliothèque</string>
+    <string name="tab_discover">Accueil</string>
+    <string name="tab_search">Rechercher</string>
+    <string name="tab_radio">Radio</string>
+    <string name="tab_settings">Paramètres</string>
+
+    <string name="section_made_for_you">FAIT POUR VOUS</string>
+    <string name="section_hot_trending">TENDANCES</string>
+    <string name="section_quick_picks">SÉLECTIONS RAPIDES</string>
+    <string name="section_albums">Albums</string>
+    <string name="section_songs">Titres</string>
+    <string name="section_playlists">Playlists</string>
+    <string name="section_top_result">Meilleur résultat</string>
+    <string name="section_in_your_library">Dans votre bibliothèque</string>
+    <string name="section_recent_searches">Recherches récentes</string>
+    <string name="section_browse_all">Tout parcourir</string>
+
+    <string name="play">Lire</string>
+    <string name="pause">Pause</string>
+    <string name="shuffle">Aléatoire</string>
+    <string name="cancel">Annuler</string>
+    <string name="save">Enregistrer</string>
+    <string name="download">Télécharger</string>
+    <string name="downloaded">Téléchargé</string>
+    <string name="retry">Réessayer</string>
+    <string name="accept_continue">Accepter et continuer</string>
+
+    <string name="search_hybrid_placeholder">Recherchez bibliothèque ou catalogue BeatDrop…</string>
+    <string name="search_online_placeholder">Recherchez titres, artistes, albums…</string>
+    <string name="library_search_placeholder">Recherchez bibliothèque ou en ligne…</string>
+
+    <string name="empty_no_results">Aucun résultat pour &#8220;%1$s&#8221;</string>
+    <string name="empty_try_different">Essayez d\'autres mots-clés ou vérifiez votre connexion</string>
+    <string name="empty_offline">Vous êtes hors ligne</string>
+    <string name="empty_offline_discover">Connectez-vous à Internet pour découvrir la musique tendance.</string>
+    <string name="empty_no_synced_lyrics">Aucune parole synchronisée disponible.</string>
+
+    <string name="album_download_all">Télécharger l\'album</string>
+    <string name="playlist_loaded_from_search">%1$s chargé depuis une nouvelle recherche.</string>
+    <string name="playlist_load_failed">Impossible de charger %1$s. Vérifiez votre connexion et réessayez.</string>
+
+    <string name="terms_title">Avant de continuer</string>
+    <string name="terms_subtitle">Confidentialité et conditions · Lecture en 30 secondes</string>
+    <string name="terms_read_more">Lire la politique complète ↓</string>
+    <string name="terms_read_less">Afficher moins ↑</string>
+</resources>

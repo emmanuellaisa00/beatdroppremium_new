@@ -1,147 +1,182 @@
 package com.beatdrop.kt.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.beatdrop.kt.ui.theme.*
-import androidx.compose.foundation.BorderStroke
+import com.beatdrop.kt.ui.theme.LocalAppColors
+import com.beatdrop.kt.ui.theme.Type
 
 /**
- * Post-update changelog sheet.
- * Shows what's new after the app is updated.
+ * Single What's-New highlight row.
+ */
+private data class WhatsNewItem(
+    val icon: ImageVector,
+    val title: String,
+    val body: String,
+)
+
+/**
+ * WhatsNewSheet — surfaces the new shuffle / playback / UI behaviour to
+ * existing users the first time they open the app after an update.
+ *
+ * Triggering rules (handled in MainActivity, not here):
+ *   • Show iff Prefs.lastSeenWhatsNewFlow.first() < BuildConfig.VERSION_CODE
+ *     AND the value is >= 0 (i.e. NOT a fresh install — fresh installs see
+ *     Onboarding instead and the version is stored on its completion).
+ *   • Dismissal stores BuildConfig.VERSION_CODE so the sheet won't re-appear
+ *     until the next version bump.
+ *
+ * Visual:
+ *   • Bottom sheet with the app's theme.
+ *   • 4 highlight rows: icon chip + title + body.
+ *   • Single 'Got it' CTA at the bottom.
+ *   • Zero spinners, zero progress bars, no external network — pure copy.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WhatsNewSheet(
-    visible: Boolean,
     onDismiss: () -> Unit,
-    version: String = "2.0.0",
 ) {
-    val changes = listOf(
-        "🎵 Redesigned with premium glass UI",
-        "📻 New Radio tab with auto-mix stations",
-        "📥 Playlist bulk download support",
-        "🎤 Inline Apple-style lyrics",
-        "🐛 Fixed playback queue ordering",
-        "⚡ Faster search and library loading",
+    val C = LocalAppColors.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    val items = listOf(
+        WhatsNewItem(
+            icon = Ic.Sparkles,
+            title = "Smarter shuffle",
+            body = "Up Next now flows by artist, collabs, genre tags in the title, " +
+                   "tempo and era — not by what you liked last month. Likes still " +
+                   "live in your Liked Songs playlist; they no longer bias the queue.",
+        ),
+        WhatsNewItem(
+            icon = Ic.Play,
+            title = "Never stops",
+            body = "When an online song ends, the next one starts in under 200 ms. " +
+                   "Predetermined the moment the current track begins, pre-warmed in " +
+                   "the playback cache. No gap, no silence.",
+        ),
+        WhatsNewItem(
+            icon = Ic.Search,
+            title = "Search that you can read",
+            body = "Every search bar is now opaque with high-contrast text, an accent " +
+                   "focus ring, and a clear (×) chip. Tap a result and Now Playing " +
+                   "opens instantly with the artwork + title already there.",
+        ),
+        WhatsNewItem(
+            icon = Ic.MusicNote,
+            title = "No more spinners",
+            body = "Download progress is now drawn around the download icon itself. " +
+                   "Search loading shows content-shaped silhouettes that crossfade " +
+                   "into your real results. Buffer ahead of the playhead glows softly " +
+                   "on the seek bar.",
+        ),
     )
 
-    if (visible) {
-        ModalBottomSheet(
-            onDismissRequest = onDismiss,
-            containerColor = GlassBg,
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            dragHandle = {
-                Box(
-                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
-                        .width(36.dp).height(4.dp)
-                        .background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(2.dp)),
-                )
-            },
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = C.bg1,
+        dragHandle = null,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .padding(bottom = 16.dp),
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp),
-            ) {
-                // Version badge
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = Accent.copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, Accent.copy(alpha = 0.30f)),
-                    modifier = Modifier.padding(bottom = 16.dp),
+            // ── Title ───────────────────────────────────────────────────
+            Text(
+                "What's new",
+                style = Type.title1,
+                color = C.text,
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+            )
+            Text(
+                "A few upgrades you'll notice immediately",
+                style = Type.subhead,
+                color = C.textSecondary,
+                modifier = Modifier.padding(bottom = 20.dp),
+            )
+
+            // ── Highlight rows ──────────────────────────────────────────
+            items.forEach { item ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.Top,
                 ) {
-                    Text(
-                        "v$version",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            color = Accent,
-                            fontWeight = FontWeight.ExtraBold,
-                        ),
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                    )
-                }
-
-                Text(
-                    "What's New",
-                    style = MaterialTheme.typography.headlineLarge,
-                )
-
-                Text(
-                    "Here's what we've been working on",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = TextMedium),
-                    modifier = Modifier.padding(top = 4.dp, bottom = 20.dp),
-                )
-
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.heightIn(max = 320.dp),
-                ) {
-                    items(changes) { change ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = SurfaceTile,
-                                border = BorderStroke(1.dp, GlassBorder),
-                                modifier = Modifier.size(32.dp),
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Filled.Check, null,
-                                        tint = Accent,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                change,
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontWeight = FontWeight.Medium,
-                                    color = TextHigh,
-                                ),
-                            )
-                        }
+                    Box(
+                        Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(C.accent.copy(alpha = 0.18f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            item.icon,
+                            contentDescription = null,
+                            tint = C.accent,
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
-                }
-
-                Spacer(Modifier.height(20.dp))
-
-                // Continue button
-                Surface(
-                    onClick = onDismiss,
-                    shape = RoundedCornerShape(16.dp),
-                    color = Accent,
-                    shadowElevation = 10.dp,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
                         Text(
-                            "Continue",
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.White,
-                            ),
+                            item.title,
+                            style = Type.headline,
+                            color = C.text,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            item.body,
+                            style = Type.footnote,
+                            color = C.textSecondary,
                         )
                     }
                 }
+            }
+
+            // ── CTA ─────────────────────────────────────────────────────
+            Spacer(Modifier.height(18.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(C.accent)
+                    .pressableScale(onClick = onDismiss, scaleTo = 0.96f),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "Got it",
+                    style = Type.headline,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }

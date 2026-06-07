@@ -1,16 +1,12 @@
 package com.beatdrop.kt.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,169 +15,136 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.beatdrop.kt.ui.theme.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.unit.sp
+import com.beatdrop.kt.ui.components.Ic
+import com.beatdrop.kt.youtube.FormatKind
+import com.beatdrop.kt.youtube.FormatOption
+import com.beatdrop.kt.ui.theme.LocalAppColors
 
 /**
- * Download quality / format picker dialog.
- * Used when downloading tracks or playlists.
+ * Format picker dialog — shown before download to let users choose quality/format.
+ * SnapTube-style: lists all available formats with size estimates.
  */
-
-data class FormatOption(
-    val label: String,
-    val description: String,
-    val bitrate: String,
-    val size: String,
-)
-
 @Composable
 fun FormatPickerDialog(
-    visible: Boolean,
+    title: String,
+    audioFormats: List<FormatOption>,
+    videoFormats: List<FormatOption>,
+    muxedFormats: List<FormatOption>,
+    onSelected: (FormatOption, Boolean) -> Unit,
     onDismiss: () -> Unit,
-    onSelect: (Int) -> Unit,
 ) {
-    var selectedIndex by remember { mutableIntStateOf(0) }
+    val C = LocalAppColors.current
+    var selectedTab by remember { mutableIntStateOf(0) } // 0=audio, 1=video
 
-    val formats = listOf(
-        FormatOption("Lossless", "FLAC · Best quality", "1411 kbps", "~45 MB"),
-        FormatOption("High", "AAC 320", "320 kbps", "~12 MB"),
-        FormatOption("Medium", "AAC 192", "192 kbps", "~7 MB"),
-        FormatOption("Low", "AAC 128", "128 kbps", "~5 MB"),
-    )
-
-    if (visible) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            containerColor = GlassBg,
-            shape = RoundedCornerShape(24.dp),
-            title = {
-                Column {
-                    Text(
-                        "Download quality",
-                        style = MaterialTheme.typography.headlineLarge,
-                    )
-                    Text(
-                        "Choose format and bitrate",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextMedium),
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(20.dp),
+        containerColor = C.bg1,
+        title = {
+            Column {
+                Text("Download", color = C.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(title, color = C.textSecondary, fontSize = 13.sp, maxLines = 1)
+            }
+        },
+        text = {
+            Column(Modifier.fillMaxWidth()) {
+                // Tab selector: Audio | Video
+                Row(
+                    Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(C.bg2)
+                        .padding(3.dp)
+                ) {
+                    TabButton("Audio", selectedTab == 0) { selectedTab = 0 }
+                    Spacer(Modifier.width(4.dp))
+                    TabButton("Video", selectedTab == 1) { selectedTab = 1 }
                 }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    formats.forEachIndexed { index, format ->
-                        val isSelected = index == selectedIndex
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = if (isSelected) Accent.copy(alpha = 0.12f) else SurfaceTile,
-                            border = BorderStroke(
-                                1.dp,
-                                if (isSelected) Accent.copy(alpha = 0.40f) else GlassBorder,
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                    ) { selectedIndex = index }
-                                    .padding(16.dp),
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            format.label,
-                                            style = MaterialTheme.typography.titleSmall.copy(
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = if (isSelected) Accent else Color.White,
-                                            ),
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            format.bitrate,
-                                            style = MaterialTheme.typography.bodySmall.copy(
-                                                color = TextLow,
-                                                fontWeight = FontWeight.Medium,
-                                            ),
-                                        )
-                                    }
-                                    Text(
-                                        format.description,
-                                        style = MaterialTheme.typography.bodySmall.copy(color = TextLow),
-                                        modifier = Modifier.padding(top = 3.dp),
-                                    )
-                                }
-                                Text(
-                                    format.size,
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = TextHint,
-                                        fontWeight = FontWeight.SemiBold,
-                                    ),
-                                )
-                                Spacer(Modifier.width(10.dp))
-                                if (isSelected) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = Accent,
-                                        modifier = Modifier.size(22.dp),
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                Icons.Filled.Check, null,
-                                                tint = Color.White,
-                                                modifier = Modifier.size(14.dp),
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(22.dp)
-                                            .border(1.5.dp, GlassBorder, CircleShape),
-                                    )
-                                }
-                            }
+
+                Spacer(Modifier.height(12.dp))
+
+                val formats = if (selectedTab == 0) audioFormats else videoFormats + muxedFormats
+
+                if (formats.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().height(120.dp), Alignment.Center) {
+                        Text("Loading formats…", color = C.textTertiary)
+                    }
+                } else {
+                    LazyColumn(
+                        Modifier.fillMaxWidth().heightIn(max = 320.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(formats) { format ->
+                            FormatRow(
+                                format = format,
+                                isAudio = selectedTab == 0,
+                                onClick = { onSelected(format, selectedTab == 1) },
+                            )
                         }
                     }
                 }
-            },
-            confirmButton = {
-                Surface(
-                    onClick = { onSelect(selectedIndex); onDismiss() },
-                    shape = RoundedCornerShape(14.dp),
-                    color = Accent,
-                    shadowElevation = 8.dp,
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                    ) {
-                        Text(
-                            "Download",
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.White,
-                            ),
-                        )
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) {
-                    Text(
-                        "Cancel",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        ),
-                    )
-                }
-            },
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = C.textSecondary)
+            }
+        }
+    )
+}
+
+@Composable
+private fun RowScope.TabButton(label: String, selected: Boolean, onClick: () -> Unit) {
+    val C = LocalAppColors.current
+    Box(
+        Modifier
+            .weight(1f)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (selected) C.accent else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        Alignment.Center,
+    ) {
+        Text(
+            label,
+            color = if (selected) Color.White else C.textSecondary,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            fontSize = 13.sp,
+        )
+    }
+}
+
+@Composable
+private fun FormatRow(format: FormatOption, isAudio: Boolean, onClick: () -> Unit) {
+    val C = LocalAppColors.current
+    Row(
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(C.bg2)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = if (isAudio) Ic.MusicNote else Ic.Video,
+            contentDescription = null,
+            tint = C.accent,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(format.label, color = C.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            if (format.height > 0) {
+                Text(
+                    "${format.width}×${format.height}" + if (format.fps > 0) " @${format.fps}fps" else "",
+                    color = C.textTertiary, fontSize = 11.sp,
+                )
+            }
+        }
+        Text(
+            "${format.estimatedSizeMB} MB",
+            color = C.textSecondary, fontSize = 12.sp,
         )
     }
 }

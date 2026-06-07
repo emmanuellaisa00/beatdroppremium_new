@@ -1,9 +1,17 @@
+# Keystore — NEVER commit these
+keystore.properties
+*.jks
+*.keystore
+
+# Gradle build outputs
 .gradle/
 build/
-*.class
-*.apk
-*.aab
-local.properties
+app/build/
+
+# Android Studio
 .idea/
 *.iml
+local.properties
+
+# macOS
 .DS_Store

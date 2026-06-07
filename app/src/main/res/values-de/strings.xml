@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- German (Deutsch) localization -->
+<resources>
+    <string name="app_name">BeatDrop</string>
+
+    <string name="tab_library">Bibliothek</string>
+    <string name="tab_discover">Start</string>
+    <string name="tab_search">Suchen</string>
+    <string name="tab_radio">Radio</string>
+    <string name="tab_settings">Einstellungen</string>
+
+    <string name="section_made_for_you">FÜR DICH GEMACHT</string>
+    <string name="section_hot_trending">IM TREND</string>
+    <string name="section_quick_picks">SCHNELLAUSWAHL</string>
+    <string name="section_albums">Alben</string>
+    <string name="section_songs">Songs</string>
+    <string name="section_playlists">Playlists</string>
+    <string name="section_top_result">Bestes Ergebnis</string>
+    <string name="section_in_your_library">In deiner Bibliothek</string>
+    <string name="section_recent_searches">Letzte Suchen</string>
+    <string name="section_browse_all">Alles durchsuchen</string>
+
+    <string name="play">Wiedergeben</string>
+    <string name="pause">Pause</string>
+    <string name="shuffle">Zufällig</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="save">Speichern</string>
+    <string name="download">Herunterladen</string>
+    <string name="downloaded">Heruntergeladen</string>
+    <string name="retry">Erneut versuchen</string>
+    <string name="accept_continue">Akzeptieren &amp; Weiter</string>
+
+    <string name="search_hybrid_placeholder">Suche in Bibliothek oder BeatDrop-Katalog…</string>
+    <string name="search_online_placeholder">Suche Songs, Künstler, Alben…</string>
+    <string name="library_search_placeholder">Suche Bibliothek oder online…</string>
+
+    <string name="empty_no_results">Keine Ergebnisse für &#8220;%1$s&#8221;</string>
+    <string name="empty_try_different">Versuche andere Suchbegriffe oder prüfe deine Verbindung</string>
+    <string name="empty_offline">Du bist offline</string>
+    <string name="empty_offline_discover">Verbinde dich mit dem Internet, um Trendmusik zu entdecken.</string>
+    <string name="empty_no_synced_lyrics">Keine synchronisierten Songtexte verfügbar.</string>
+
+    <string name="album_download_all">Album herunterladen</string>
+    <string name="playlist_loaded_from_search">%1$s aus einer neuen Suche geladen.</string>
+    <string name="playlist_load_failed">%1$s konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.</string>
+
+    <string name="terms_title">Bevor du fortfährst</string>
+    <string name="terms_subtitle">Datenschutz &amp; Bedingungen · 30 Sekunden Lesezeit</string>
+    <string name="terms_read_more">Vollständige Richtlinie lesen ↓</string>
+    <string name="terms_read_less">Weniger anzeigen ↑</string>
+</resources>

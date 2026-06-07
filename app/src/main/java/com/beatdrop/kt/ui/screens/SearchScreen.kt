@@ -1,309 +1,256 @@
 package com.beatdrop.kt.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.beatdrop.kt.data.SampleData
+import com.beatdrop.kt.PlayerViewModel
 import com.beatdrop.kt.ui.components.*
-import com.beatdrop.kt.ui.theme.*
-import androidx.compose.foundation.BorderStroke
+import com.beatdrop.kt.ui.theme.LocalAppColors
 
+/**
+ * Search modes — kept for compatibility with MainActivity routes.
+ *   HYBRID      = bottom-tab Search → local library + online
+ *   ONLINE_ONLY = Discover → search button → online only
+ */
+enum class SearchMode { HYBRID, ONLINE_ONLY }
+
+/**
+ * Search — rewritten from scratch to pixel-match the BeatDrop HTML concept.
+ *
+ * Layout:
+ *   PageTitle             "Search" (with avatar left + camera right)
+ *   SearchBar             56 dp obsidian pill with "What do you want to listen to?"
+ *   Discover row          3 portrait cards (#tag) — one is the bright #iammusic
+ *   Browse all            2-col coloured tile grid
+ *   (when typing)         Live result list / suggestions / history
+ */
 @Composable
 fun SearchScreen(
-    initialQuery: String = "",
-    onSearch: (String) -> Unit = {},
-    onOpenAlbum: (String) -> Unit = {},
-    onOpenArtist: (String) -> Unit = {},
-    onOpenPlaylist: (String) -> Unit = {},
-    onOpenGenre: (String) -> Unit = {},
-    onOpenOnlineCollection: (String) -> Unit = {},
-    onTrackClick: () -> Unit = {},
+    vm: PlayerViewModel,
+    onExpandPlayer: () -> Unit = {},
+    onOpenOnlineCollection: (com.beatdrop.kt.youtube.PlayableCollection) -> Unit = {},
+    mode: SearchMode = SearchMode.HYBRID,
 ) {
-    var query by remember { mutableStateOf(initialQuery) }
-    val focusRequester = remember { FocusRequester() }
+    val C = LocalAppColors.current
+    val query     by vm.onlineQuery.collectAsState()
+    val results   by vm.onlineResults.collectAsState()
+    val suggestions by vm.suggestions.collectAsState()
+    val history   by vm.searchHistory.collectAsState()
+    val message   by vm.onlineMessage.collectAsState()
 
-    // Search results (filtered from sample data)
-    val matchedSongs = remember(query) {
-        if (query.isBlank()) emptyList()
-        else SampleData.libraryTracks.filter {
-            it.title.contains(query, true) || it.artist.contains(query, true) || it.album.contains(query, true)
-        }
-    }
-    val matchedAlbums = remember(query) {
-        if (query.isBlank()) emptyList()
-        else SampleData.recentlyPlayed.filter {
-            it.title.contains(query, true) || it.artist.contains(query, true)
-        }
-    }
-    val matchedArtists = remember(query) {
-        if (query.isBlank()) emptyList()
-        else SampleData.recentlyPlayed.map { it.artist }.distinct().filter {
-            it.contains(query, true)
-        }
-    }
-    val matchedPlaylists = remember(query) {
-        if (query.isBlank()) emptyList()
-        else SampleData.homeQuickAccess.filter {
-            it.title.contains(query, true)
-        }
-    }
-    val hasResults = matchedSongs.isNotEmpty() || matchedAlbums.isNotEmpty() || matchedArtists.isNotEmpty() || matchedPlaylists.isNotEmpty()
-    val isSearching = query.isNotBlank()
+    val showEmptyState = query.isEmpty() && results.isEmpty()
 
-    Column(modifier = Modifier.fillMaxSize().background(Background).padding(bottom = 200.dp)) {
-        Spacer(Modifier.height(18.dp))
-        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            Text("Search", style = MaterialTheme.typography.displayLarge)
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        // Search bar
-        Surface(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(50.dp),
-            shape = RoundedCornerShape(25.dp),
-            color = SurfaceTile,
-            border = BorderStroke(1.dp, if (isSearching) Accent.copy(alpha = 0.4f) else GlassBorder),
-            shadowElevation = if (isSearching) 8.dp else 4.dp,
+    ScreenScaffold {
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 220.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 18.dp)) {
-                Icon(Icons.Filled.Search, null, tint = if (isSearching) Accent else TextLow, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(12.dp))
-                androidx.compose.foundation.layout.Box(modifier = Modifier.weight(1f)) {
-                    if (query.isEmpty()) {
-                        Text(
-                            "Artists, songs, albums, playlists…",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = TextHint, fontWeight = FontWeight.Medium),
-                        )
-                    }
-                    BasicTextField(
+            // ── Top row: avatar + "Search" title + camera ─────────────────
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(start = PageHorizontalPadding, end = PageHorizontalPadding, top = 14.dp, bottom = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularGlassIcon(Ic.Person, "Profile", onClick = {})
+                    Spacer(Modifier.width(14.dp))
+                    PageTitle("Search", Modifier.weight(1f))
+                    CircularGlassIcon(Ic.Sparkles, "Snap to search", onClick = {})
+                }
+            }
+
+            // ── Search bar ────────────────────────────────────────────────
+            item {
+                Box(Modifier.padding(horizontal = PageHorizontalPadding, vertical = 6.dp)) {
+                    BeatDropSearchField(
                         value = query,
-                        onValueChange = {
-                            query = it
-                            onSearch(it)
+                        onChange = {
+                            vm.setOnlineQuery(it)
+                            if (mode == SearchMode.HYBRID) vm.runLocalSearch(it)
+                            if (it.length >= 2) vm.loadSuggestions()
                         },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White, fontWeight = FontWeight.Medium,
-                        ),
-                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                        placeholder = "What do you want to listen to?",
+                        onSubmit = { vm.runOnlineSearch() },
                     )
                 }
-                if (isSearching) {
-                    IconButton(onClick = { query = "" }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Filled.Close, null, tint = TextMedium, modifier = Modifier.size(16.dp))
-                    }
-                }
             }
-        }
 
-        if (isSearching) {
-            // ── Search Results ──
-            Spacer(Modifier.height(20.dp))
-
-            if (!hasResults) {
-                Box(modifier = Modifier.fillMaxWidth().padding(top = 80.dp), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Filled.SearchOff, null, tint = TextHint, modifier = Modifier.size(48.dp))
-                        Spacer(Modifier.height(12.dp))
-                        Text("No results for \"$query\"", style = MaterialTheme.typography.bodyMedium.copy(color = TextMedium))
-                        Text("Try different keywords", style = MaterialTheme.typography.bodySmall.copy(color = TextLow), modifier = Modifier.padding(top = 4.dp))
+            if (showEmptyState) {
+                // ── Discover something new (3 portrait cards) ────────────
+                item { SectionTitle("Discover something new") }
+                item {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = PageHorizontalPadding),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        DiscoverPortrait(
+                            tag = "#trending",
+                            onClick = { vm.setOnlineQuery("trending"); vm.runOnlineSearch() },
+                            modifier = Modifier.weight(1f),
+                        )
+                        DiscoverPortrait(
+                            tag = "#today",
+                            onClick = { vm.setOnlineQuery("new music today"); vm.runOnlineSearch() },
+                            modifier = Modifier.weight(1f),
+                        )
+                        DiscoverPortrait(
+                            tag = "#newrelease",
+                            bright = true,
+                            onClick = { vm.setOnlineQuery("new releases"); vm.runOnlineSearch() },
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
-                ) {
-                    // ── Top Results: Songs ──
-                    if (matchedSongs.isNotEmpty()) {
-                        item {
-                            SectionHeader("Songs", actionLabel = if (matchedSongs.size > 3) "See all" else null)
-                            Spacer(Modifier.height(6.dp))
+
+                // ── Browse all (2-col coloured tile grid) ────────────────
+                item { SectionTitle("Browse all") }
+                item {
+                    Column(
+                        Modifier.padding(horizontal = PageHorizontalPadding),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            BrowseTile("Pop",       Color(0xFFFF2DB5), onClick = { vm.setOnlineQuery("pop hits");      vm.runOnlineSearch() }, modifier = Modifier.weight(1f))
+                            BrowseTile("Chill",     Color(0xFF117A59), onClick = { vm.setOnlineQuery("chill music");   vm.runOnlineSearch() }, modifier = Modifier.weight(1f))
                         }
-                        items(matchedSongs.take(5)) { track ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            BrowseTile("Hip-Hop",   Color(0xFF6A1EE0), onClick = { vm.setOnlineQuery("hip hop");       vm.runOnlineSearch() }, modifier = Modifier.weight(1f))
+                            BrowseTile("R&B",       Color(0xFFA78BDC), onClick = { vm.setOnlineQuery("r&b");           vm.runOnlineSearch() }, modifier = Modifier.weight(1f))
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            BrowseTile("Electronic",Color(0xFF00B4D8), onClick = { vm.setOnlineQuery("electronic");    vm.runOnlineSearch() }, modifier = Modifier.weight(1f))
+                            BrowseTile("Rock",      Color(0xFFD62828), onClick = { vm.setOnlineQuery("rock classics"); vm.runOnlineSearch() }, modifier = Modifier.weight(1f))
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            BrowseTile("Jazz",      Color(0xFFE76F51), onClick = { vm.setOnlineQuery("jazz");          vm.runOnlineSearch() }, modifier = Modifier.weight(1f))
+                            BrowseTile("Workout",   Color(0xFFFCBF49), onClick = { vm.setOnlineQuery("workout music"); vm.runOnlineSearch() }, modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+
+                // ── Recent searches ──────────────────────────────────────
+                if (history.isNotEmpty()) {
+                    item { SectionTitle("Recent searches") }
+                    items(history.take(8)) { term ->
+                        Box(Modifier.padding(horizontal = PageHorizontalPadding, vertical = 4.dp)) {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
+                                Modifier
                                     .fillMaxWidth()
-                                    .clickable(onClick = onTrackClick)
-                                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                                    .premiumGlass(level = GlassLevel.Z1_List, shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+                                    .pressableScale(
+                                        onClick = {
+                                            vm.setOnlineQuery(term)
+                                            vm.runOnlineSearch()
+                                        },
+                                        scaleTo = 0.98f,
+                                    )
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Box(
-                                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(CoverGradients.get(track.coverIndex)),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(Icons.Filled.MusicNote, null, tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.size(18.dp))
-                                }
+                                Icon(Ic.History, null, tint = C.text.copy(alpha = 0.55f), modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        track.title,
-                                        style = MaterialTheme.typography.titleMedium.copy(
-                                            color = if (track.isPlaying) Accent else Color.White,
-                                            fontWeight = FontWeight.SemiBold,
-                                        ),
-                                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                    )
-                                    Text(
-                                        "${track.artist}${if (track.album.isNotEmpty()) " · ${track.album}" else ""}",
-                                        style = MaterialTheme.typography.bodySmall.copy(color = TextLow),
-                                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.padding(top = 2.dp),
-                                    )
-                                }
-                                Text(track.duration, style = MaterialTheme.typography.bodySmall.copy(color = TextHint))
+                                Text(term, color = C.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                             }
                         }
                     }
+                }
 
-                    // ── Artists ──
-                    if (matchedArtists.isNotEmpty()) {
-                        item {
-                            Spacer(Modifier.height(16.dp))
-                            SectionHeader("Artists")
-                            Spacer(Modifier.height(10.dp))
-                        }
-                        item {
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                contentPadding = PaddingValues(horizontal = 20.dp),
-                            ) {
-                                items(matchedArtists) { name ->
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier.width(100.dp).clickable { onOpenArtist(name) },
-                                    ) {
-                                        Box(
-                                            modifier = Modifier.size(80.dp).clip(CircleShape)
-                                                .background(CoverGradients.get(kotlin.math.abs(name.hashCode()) % 8 + 1)),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Text(
-                                                name.firstOrNull()?.uppercase() ?: "?",
-                                                color = Color.White, fontWeight = FontWeight.Black, fontSize = 28.sp,
-                                            )
-                                        }
-                                        Text(
-                                            name,
-                                            style = MaterialTheme.typography.bodySmall.copy(
-                                                fontWeight = FontWeight.Bold, color = TextHigh,
-                                            ),
-                                            maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.padding(top = 8.dp),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // ── Albums ──
-                    if (matchedAlbums.isNotEmpty()) {
-                        item {
-                            Spacer(Modifier.height(16.dp))
-                            SectionHeader("Albums")
-                            Spacer(Modifier.height(10.dp))
-                        }
-                        item {
-                            AlbumCardRow(matchedAlbums, onOpenAlbum)
-                        }
-                    }
-
-                    // ── Playlists ──
-                    if (matchedPlaylists.isNotEmpty()) {
-                        item {
-                            Spacer(Modifier.height(16.dp))
-                            SectionHeader("Playlists")
-                            Spacer(Modifier.height(10.dp))
-                        }
-                        items(matchedPlaylists) { playlist ->
+                Unit
+            } else {
+                // ── Typed query — suggestions until results arrive ───────
+                if (results.isEmpty() && suggestions.isNotEmpty()) {
+                    items(suggestions.take(8)) { s ->
+                        Box(Modifier.padding(horizontal = PageHorizontalPadding, vertical = 4.dp)) {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
+                                Modifier
                                     .fillMaxWidth()
-                                    .clickable { onOpenPlaylist(playlist.id) }
-                                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                                    .premiumGlass(level = GlassLevel.Z1_List, shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+                                    .pressableScale(
+                                        onClick = {
+                                            vm.setOnlineQuery(s)
+                                            vm.runOnlineSearch()
+                                        },
+                                        scaleTo = 0.98f,
+                                    )
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Box(
-                                    modifier = Modifier.size(52.dp).clip(RoundedCornerShape(10.dp))
-                                        .background(CoverGradients.get(playlist.coverIndex)),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(Icons.Filled.QueueMusic, null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(24.dp))
-                                }
-                                Spacer(Modifier.width(14.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(playlist.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    if (playlist.subtitle.isNotBlank()) {
-                                        Text(playlist.subtitle, style = MaterialTheme.typography.bodySmall.copy(color = TextLow), modifier = Modifier.padding(top = 2.dp))
-                                    }
-                                }
-                                Text("›", style = MaterialTheme.typography.headlineMedium, color = Color.White.copy(alpha = 0.35f))
+                                Icon(Ic.Search, null, tint = C.text.copy(alpha = 0.55f), modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Text(s, color = C.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                             }
                         }
                     }
+                }
 
-                    item { Spacer(Modifier.height(20.dp)) }
+                // ── Results ──────────────────────────────────────────────
+                if (results.isNotEmpty()) {
+                    item { SectionTitle("Results", trailing = "${results.size}") }
+                    items(results, key = { it.videoId }) { r ->
+                        Box(Modifier.padding(horizontal = PageHorizontalPadding, vertical = 5.dp)) {
+                            SongRow(
+                                title = r.title,
+                                artist = if (r.durationText.isNotBlank()) "${r.author} · ${r.durationText}" else r.author,
+                                duration = "",
+                                artworkUri = r.thumbnailUrl,
+                                onClick = {
+                                    vm.playOnline(r)
+                                    onExpandPlayer()
+                                },
+                                onMenu = { /* future: action sheet */ },
+                            )
+                        }
+                    }
                 }
-            }
-        } else {
-            // ── Browse (no query) ──
-            Spacer(Modifier.height(24.dp))
-            SectionHeader("Top genres")
-            Spacer(Modifier.height(14.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.heightIn(max = 450.dp),
-            ) {
-                items(SampleData.genres) { genre ->
-                    BrowseTile(label = genre.title, tileIndex = genre.tileIndex, onClick = { onOpenGenre(genre.title) })
+
+                // Loading indicator if no results yet but query is set
+                if (results.isEmpty() && suggestions.isEmpty() && query.length >= 2) {
+                    item {
+                        Box(
+                            Modifier.fillMaxWidth().padding(top = 60.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(color = C.accent, strokeWidth = 2.5.dp)
+                        }
+                    }
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            SectionHeader("Browse all")
-            Spacer(Modifier.height(14.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.heightIn(max = 250.dp),
-            ) {
-                items(SampleData.browseAll) { genre ->
-                    BrowseTile(label = genre.title, tileIndex = genre.tileIndex, onClick = { onOpenOnlineCollection("browse_${genre.title}") })
+            // ── Snackbar message ──────────────────────────────────────────
+            if (message != null) {
+                item {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = PageHorizontalPadding, vertical = 12.dp),
+                    ) {
+                        Text(
+                            message ?: "",
+                            color = C.text.copy(alpha = 0.85f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .premiumGlass(level = GlassLevel.Z2_Card, shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                        )
+                    }
                 }
             }
-            Spacer(Modifier.height(20.dp))
         }
     }
 }

@@ -1,160 +1,117 @@
 package com.beatdrop.kt.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.beatdrop.kt.data.BeatDropError
-import com.beatdrop.kt.data.BeatDropResult
-import com.beatdrop.kt.data.safeCall
-import com.beatdrop.kt.ui.components.BackButton
-import com.beatdrop.kt.ui.components.ErrorBanner
-import com.beatdrop.kt.ui.theme.*
-import androidx.compose.foundation.BorderStroke
+import com.beatdrop.kt.ui.components.Ic
+import com.beatdrop.kt.PlayerViewModel
+import com.beatdrop.kt.ui.components.GlassHeader
+import com.beatdrop.kt.ui.components.IconPuck
+import com.beatdrop.kt.ui.components.ScreenScaffold
+import com.beatdrop.kt.ui.components.TintedGlassButton
+import com.beatdrop.kt.ui.components.glassCard
+import com.beatdrop.kt.ui.components.pressableScale
+import com.beatdrop.kt.ui.theme.LocalAppColors
+import com.beatdrop.kt.ui.theme.Radius
+import com.beatdrop.kt.ui.theme.Spacing
+import com.beatdrop.kt.ui.theme.Type
+import com.beatdrop.kt.util.ClipboardWatcher
 
-private sealed class ResolveState {
-    data object Loading : ResolveState()
-    data class Resolved(val title: String, val artist: String) : ResolveState()
-    data class Error(val error: BeatDropError) : ResolveState()
-}
-
+/**
+ * Screen shown when a URL is detected (from clipboard, share menu, or deep link).
+ */
 @Composable
 fun ClipUrlScreen(
-    url: String = "",
+    vm: PlayerViewModel,
+    url: String,
+    onExpandPlayer: () -> Unit,
     onBack: () -> Unit,
-    onExpandPlayer: () -> Unit = {},
 ) {
-    var state by remember { mutableStateOf<ResolveState>(ResolveState.Loading) }
+    val C = LocalAppColors.current
+    var isLoading by remember { mutableStateOf(false) }
+    val detected = remember { ClipboardWatcher.parseUrl(url) }
 
-    // Simulate resolver with error handling
     LaunchedEffect(url) {
-        state = ResolveState.Loading
-        val result = safeCall {
-            kotlinx.coroutines.delay(1500)
-            // Simulate: if URL is empty, throw
-            if (url.isBlank()) throw IllegalArgumentException("Empty URL")
-            // Simulate success
-            "Imported Track" to "BeatDrop Catalogue"
-        }
-        state = when (result) {
-            is BeatDropResult.Success -> ResolveState.Resolved(result.data.first, result.data.second)
-            is BeatDropResult.Error -> ResolveState.Error(result.error)
+        if (detected != null && !detected.isPlaylist) {
+            isLoading = true
+            vm.playOnlineByUrl(url)
+            isLoading = false
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Background)) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(top = 96.dp).padding(horizontal = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            when (state) {
-                is ResolveState.Loading -> {
-                    CircularProgressIndicator(color = Accent, modifier = Modifier.size(48.dp))
-                    Spacer(Modifier.height(20.dp))
-                    Text("Resolving link…", color = TextMedium, style = MaterialTheme.typography.bodyLarge)
-                    Spacer(Modifier.height(8.dp))
-                    Text(url.take(60), color = TextLow, style = MaterialTheme.typography.bodySmall, maxLines = 2)
-                }
+    ScreenScaffold(ambientColor = C.glassGlow, ambientIntensity = 0.18f) {
+        Column(Modifier.fillMaxSize()) {
+            GlassHeader(title = "Link Detected", onBack = onBack, leadingIcon = Ic.Link)
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = Spacing.lg)
+                    .padding(top = 24.dp, bottom = 190.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                IconPuck(icon = Ic.Link, contentDescription = null, size = 84.dp, tint = C.accent)
+                Spacer(Modifier.height(20.dp))
 
-                is ResolveState.Resolved -> {
-                    val (title, artist) = state as ResolveState.Resolved
-                    Box(
-                        modifier = Modifier.size(120.dp)
-                            .background(CoverGradients.get(3), RoundedCornerShape(16.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Filled.Link, null, tint = Color.White.copy(alpha = 0.50f), modifier = Modifier.size(48.dp))
+                // URL card
+                Box(
+                    Modifier.fillMaxWidth().glassCard(radius = Radius.lg).padding(20.dp),
+                ) {
+                    Column(horizontalAlignment = Alignment.Start) {
+                        Text(url, style = Type.body, color = C.text)
+                        if (detected != null) {
+                            Spacer(Modifier.height(8.dp))
+                            Text("Platform: ${detected.platform}", style = Type.footnote, color = C.textTertiary)
+                            if (detected.isPlaylist) {
+                                Text(
+                                    "Playlist detected",
+                                    style = Type.footnote, color = C.accent,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                        }
                     }
-                    Spacer(Modifier.height(20.dp))
-                    Text(title, style = MaterialTheme.typography.headlineMedium)
-                    Text(artist, style = MaterialTheme.typography.bodyMedium.copy(color = TextMedium), modifier = Modifier.padding(top = 6.dp))
-                    Spacer(Modifier.height(28.dp))
+                }
+                Spacer(Modifier.height(24.dp))
+                if (isLoading) {
+                    CircularProgressIndicator(color = C.accent)
+                } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(
-                            onClick = onExpandPlayer,
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Accent),
-                            modifier = Modifier.height(48.dp),
-                        ) {
-                            Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Play", fontWeight = FontWeight.Bold)
+                        TintedGlassButton(modifier = Modifier.height(48.dp).width(140.dp)) {
+                            Row(
+                                Modifier.fillMaxSize().pressableScale(onClick = {
+                                    vm.playOnlineByUrl(url); onExpandPlayer()
+                                }),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Ic.Play, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Play", color = Color.White, style = Type.headline)
+                            }
                         }
-                        OutlinedButton(
-                            onClick = {},
-                            shape = RoundedCornerShape(24.dp),
-                            border = BorderStroke(1.dp, GlassBorder),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                            modifier = Modifier.height(48.dp),
+                        Box(
+                            Modifier
+                                .height(48.dp)
+                                .width(160.dp)
+                                .glassCard(radius = Radius.xl)
+                                .pressableScale(onClick = { vm.downloadOnlineByUrl(url) }),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Icon(Icons.Filled.Download, null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Download", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-
-                is ResolveState.Error -> {
-                    val error = (state as ResolveState.Error).error
-                    Box(
-                        modifier = Modifier.size(80.dp)
-                            .background(Color(0xFF2A1015), RoundedCornerShape(20.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Filled.LinkOff, null,
-                            tint = Color(0xFFFF6B6B),
-                            modifier = Modifier.size(32.dp),
-                        )
-                    }
-                    Spacer(Modifier.height(20.dp))
-                    Text(
-                        "Couldn't resolve link",
-                        style = MaterialTheme.typography.headlineSmall,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        error.message,
-                        style = MaterialTheme.typography.bodyMedium.copy(color = TextMedium),
-                    )
-                    Spacer(Modifier.height(28.dp))
-                    Surface(
-                        onClick = onBack,
-                        shape = RoundedCornerShape(16.dp),
-                        color = SurfaceTile,
-                        border = BorderStroke(1.dp, GlassBorder),
-                        modifier = Modifier.height(48.dp),
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 24.dp)) {
-                            Text("Go back", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Ic.Download, null, tint = C.text, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Download", color = C.text, style = Type.headline)
+                            }
                         }
                     }
                 }
             }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            BackButton(onClick = onBack)
-            Text("Import", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-            Box(Modifier.size(36.dp))
         }
     }
 }

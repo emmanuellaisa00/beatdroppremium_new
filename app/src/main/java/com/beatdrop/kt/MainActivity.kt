@@ -1,138 +1,746 @@
 package com.beatdrop.kt
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
-import com.beatdrop.kt.navigation.BeatDropNavGraph
-import com.beatdrop.kt.navigation.Screen
-import com.beatdrop.kt.ui.components.BottomDock
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.beatdrop.kt.ui.components.Ic
+import com.beatdrop.kt.ui.components.specularHighlight
+import com.beatdrop.kt.ui.components.GlassTabBar2
+import com.beatdrop.kt.ui.components.TabSpec2
 import com.beatdrop.kt.ui.components.MiniPlayer
-import com.beatdrop.kt.ui.components.ErrorToast
+import com.beatdrop.kt.ui.components.LocalHazeState
+import com.beatdrop.kt.ui.components.LocalDeviceTilt
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
+import com.beatdrop.kt.ui.screens.*
 import com.beatdrop.kt.ui.theme.BeatDropTheme
+import com.beatdrop.kt.ui.theme.LocalAppColors
+import com.beatdrop.kt.youtube.initHiddenYoutubeWebViews
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import kotlinx.coroutines.flow.receiveAsFlow
 
 class MainActivity : ComponentActivity() {
+    private var cleanupWebViews: (() -> Unit)? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-
-        // Global unhandled exception handler — prevents hard crashes
-        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            // Log to debug screen if possible, then delegate to default
-            try {
-                defaultHandler?.uncaughtException(thread, throwable)
-            } catch (_: Exception) {
-                // If even the default handler crashes, just kill the activity
-                finishAffinity()
+        // Immersive edge-to-edge system bars
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        cleanupWebViews = initHiddenYoutubeWebViews(this)
+        setContent {
+            val vm: PlayerViewModel = viewModel()
+            val themePref by vm.theme.collectAsState()
+            BeatDropTheme(themePref = themePref) {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    Root(vm)
+                }
             }
         }
+        handleIncomingIntent(intent)
+    }
 
-        setContent { BeatDropTheme { BeatDropApp() } }
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(intent: android.content.Intent?) {
+        when (intent?.action) {
+            android.content.Intent.ACTION_SEND -> {
+                intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
+                    ?.let { PendingIncomingUrl.submit(it) }
+            }
+            android.content.Intent.ACTION_VIEW -> {
+                intent.data?.toString()?.let { PendingIncomingUrl.submit(it) }
+            }
+            "com.beatdrop.kt.PLAY_DOWNLOADED" -> {
+                // Tap on a 'download complete' notification. The Intent
+                // extra `play_video_id` carries the just-downloaded
+                // track's videoId; publish it to Root through a buffered event
+                // channel so cold-start and warm-resume taps are consumed once.
+                intent.getStringExtra("play_video_id")?.let { videoId ->
+                    PendingDownloadPlay.submit(videoId)
+                }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        cleanupWebViews?.invoke()
+        super.onDestroy()
     }
 }
 
+/**
+ * Shared pigeonhole for an incoming 'play this downloaded track' intent.
+ * MainActivity.handleIncomingIntent (a non-Composable callback) writes
+ * to it; the Root composable consumes it inside a LaunchedEffect that
+ * has access to the PlayerViewModel.
+ *
+ * Single-value queue — only the most recent tap wins, which is what
+ * the user expects (rapid double-tap of two completed-download
+ * notifications should land on the second one).
+ */
+object PendingDownloadPlay {
+    private val events = kotlinx.coroutines.channels.Channel<String>(capacity = kotlinx.coroutines.channels.Channel.BUFFERED)
+    val flow: kotlinx.coroutines.flow.Flow<String> = events.receiveAsFlow()
+    fun submit(videoId: String) { events.trySend(videoId) }
+}
+
+object PendingIncomingUrl {
+    private val events = kotlinx.coroutines.channels.Channel<String>(capacity = kotlinx.coroutines.channels.Channel.BUFFERED)
+    val flow: kotlinx.coroutines.flow.Flow<String> = events.receiveAsFlow()
+    fun submit(url: String) { events.trySend(url) }
+}
+
+private val audioPermission: String
+    get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        android.Manifest.permission.READ_MEDIA_AUDIO
+    else android.Manifest.permission.READ_EXTERNAL_STORAGE
+
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun BeatDropApp() {
-    val navController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+fun Root(vm: PlayerViewModel = viewModel()) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val perm = rememberPermissionState(audioPermission)
+    val notifPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        rememberPermissionState(android.Manifest.permission.POST_NOTIFICATIONS) else null
 
-    // Global error toast
-    var globalError by remember { mutableStateOf<String?>(null) }
+    var showSplash by rememberSaveable { mutableStateOf(true) }
+    if (showSplash) { SplashScreen(onDone = { showSplash = false }); return }
 
-    val hideDockOn = setOf(
-        Screen.Splash.route,
-        Screen.Onboarding.route,
-        Screen.NowPlaying.route,
-        Screen.Lyrics.route,
-        Screen.VideoPlayer.route,
-    )
-    val showDock = currentRoute != null && currentRoute !in hideDockOn
-    val showMini = showDock && currentRoute != null
-
-    val activeTab = when {
-        currentRoute == Screen.Discover.route -> 0
-        currentRoute == Screen.Search.route -> 1
-        currentRoute == Screen.Library.route -> 2
-        currentRoute == Screen.Radio.route -> 3
-        else -> 0
+    LaunchedEffect(Unit) { vm.connect() }
+    // Always surface downloaded tracks in the library — they live in
+    // app-private storage so no permission is required. Without this
+    // the user's downloads vanished after every cold start when audio
+    // permission was denied or not yet granted.
+    LaunchedEffect(Unit) { vm.loadDownloadsOnly() }
+    LaunchedEffect(perm.status.isGranted) {
+        if (perm.status.isGranted) {
+            vm.loadLibrary()
+            if (notifPerm != null && !notifPerm.status.isGranted) notifPerm.launchPermissionRequest()
+        }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        BeatDropNavGraph(navController = navController, modifier = Modifier.fillMaxSize())
-
-        // Mini player
-        AnimatedVisibility(
-            visible = showMini,
-            enter = slideInVertically { it },
-            exit = slideOutVertically { it },
-            modifier = Modifier.align(Alignment.BottomCenter)
-                .padding(start = 10.dp, end = 10.dp, bottom = 100.dp)
-                .zIndex(3f),
-        ) {
-            MiniPlayer(
-                trackName = "4x4",
-                artistName = "Don Toliver",
-                coverIndex = 1,
-                progress = 0.42f,
-                onClick = {
-                    try {
-                        navController.navigate(Screen.NowPlaying.route)
-                    } catch (_: Exception) { }
-                },
-            )
+    // Pick up a 'play this downloaded track' request landing from a
+    // completed-download notification tap. handleIncomingIntent
+    // (called from onCreate / onNewIntent) emits into PendingDownloadPlay;
+    // this collector consumes each event exactly once and routes through
+    // PlayerViewModel.playOnlineByVideoId.
+    LaunchedEffect(Unit) {
+        PendingDownloadPlay.flow.collect { videoId ->
+            vm.playOnlineByVideoId(videoId)
         }
+    }
 
-        // Bottom dock
-        AnimatedVisibility(
-            visible = showDock,
-            enter = slideInVertically { it },
-            exit = slideOutVertically { it },
-            modifier = Modifier.align(Alignment.BottomCenter)
-                .padding(start = 16.dp, end = 16.dp, bottom = 22.dp)
-                .zIndex(4f),
-        ) {
-            BottomDock(activeTab = activeTab, onTabSelected = { tab ->
-                val route = when (tab) {
-                    0 -> Screen.Discover.route
-                    1 -> Screen.Search.route
-                    2 -> Screen.Library.route
-                    3 -> Screen.Radio.route
-                    else -> Screen.Discover.route
+    LaunchedEffect(Unit) {
+        PendingIncomingUrl.flow.collect { url ->
+            vm.playOnlineByUrl(url)
+        }
+    }
+
+    // Read versionCode at runtime via PackageManager — avoids needing
+    // buildFeatures.buildConfig = true in Gradle (AGP 8+ default).
+    val currentVersionCode = remember {
+        runCatching {
+            val pm = context.packageManager
+            val info = pm.getPackageInfo(context.packageName, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode.toInt()
+            else @Suppress("DEPRECATION") info.versionCode
+        }.getOrDefault(0)
+    }
+
+    var onboarded by rememberSaveable { mutableStateOf(false) }
+    if (!onboarded && !perm.status.isGranted) {
+        OnboardingScreen(onGetStarted = {
+            onboarded = true
+            perm.launchPermissionRequest()
+            // Fresh install — mark the *current* version as 'seen' so the
+            // What's New sheet doesn't show after onboarding. Existing
+            // users have lastSeen < currentVersionCode and will see the
+            // sheet on first launch after the update.
+            vm.markWhatsNewSeen(currentVersionCode)
+        }); return
+    }
+    if (!perm.status.isGranted) {
+        PermissionPrompt(onRequest = { perm.launchPermissionRequest() })
+        return
+    }
+
+    // ── What's New sheet (post-update, pre-content) ─────────────────────
+    // Show once per version bump for users who already onboarded. The sheet
+    // dismisses itself by writing currentVersionCode back to prefs.
+    var showWhatsNew by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(Unit) {
+        if (showWhatsNew == null) {
+            val seen = vm.lastSeenWhatsNew()
+            // Only show when we have a real prior install (seen >= 0) and
+            // we've actually bumped the version since.
+            showWhatsNew = seen in 0 until currentVersionCode
+        }
+    }
+    if (showWhatsNew == true) {
+        com.beatdrop.kt.ui.components.WhatsNewSheet(
+            onDismiss = {
+                vm.markWhatsNewSeen(currentVersionCode)
+                showWhatsNew = false
+            },
+        )
+    }
+
+    // Clipboard URL detection
+    var clipUrl by rememberSaveable { mutableStateOf<String?>(null) }
+    if (perm.status.isGranted) {
+        val detected = com.beatdrop.kt.util.ClipboardWatcher.checkClipboard(context)
+        LaunchedEffect(detected) { clipUrl = detected?.url }
+    }
+    clipUrl?.let { url ->
+        AlertDialog(
+            onDismissRequest = { clipUrl = null; com.beatdrop.kt.util.ClipboardWatcher.reset() },
+            title = { Text("Video Link Detected") },
+            text = { Text("A video URL was found on your clipboard. Do you want to play or download it?\n\n$url") },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = {
+                        vm.playOnlineByUrl(url)
+                        clipUrl = null
+                        com.beatdrop.kt.util.ClipboardWatcher.reset()
+                    }) { Text("Play") }
+                    TextButton(onClick = {
+                        vm.downloadOnlineByUrl(url)
+                        clipUrl = null
+                        com.beatdrop.kt.util.ClipboardWatcher.reset()
+                    }) { Text("Download") }
                 }
-                try {
-                    navController.navigate(route) {
-                        popUpTo(Screen.Discover.route) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                } catch (_: Exception) { }
-            })
-        }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    clipUrl = null
+                    com.beatdrop.kt.util.ClipboardWatcher.reset()
+                }) { Text("Dismiss") }
+            }
+        )
+    }
 
-        // Global error toast
-        globalError?.let { msg ->
-            ErrorToast(
-                message = msg,
-                visible = true,
-                onDismiss = { globalError = null },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 110.dp)
-                    .zIndex(5f),
-            )
+    MainScaffold(vm)
+}
+
+/**
+ * Tab definitions. Labels are resolved via stringResource so the
+ * localized resource set (English / Swahili / French / Spanish /
+ * Portuguese / Arabic / German / Hindi) is honoured per device locale.
+ */
+@Composable
+private fun rememberTabs(): List<TabSpec2> = listOf(
+    TabSpec2("discover", stringResource(R.string.tab_discover), Ic.Home, Ic.Home),
+    TabSpec2("search",   stringResource(R.string.tab_search),   Ic.Search,   Ic.Search),
+    TabSpec2("library",  stringResource(R.string.tab_library),  Ic.Library,  Ic.Library),
+    TabSpec2("radio",    stringResource(R.string.tab_radio),    Ic.Radio,    Ic.Radio),
+)
+
+private sealed interface Dest {
+    data object Tabs : Dest
+    data class Album(val name: String, val artist: String) : Dest
+    data class Artist(val name: String) : Dest
+    data class Playlist(val name: String) : Dest
+    data object Playlists : Dest
+    data object Stats : Dest
+    data object Settings : Dest
+    data object LocalDiscover : Dest
+    data object Eq : Dest
+    data object DebugLog : Dest
+    data object Search : Dest
+    data object NowPlaying : Dest
+    data object Queue : Dest
+    data object Downloads : Dest
+    data object Trending : Dest
+    data object Browser : Dest
+    data object Storage : Dest
+    data object PrivateFolder : Dest
+    data class VideoPlayer(val path: String, val title: String) : Dest
+    data class Channel(val channelId: String, val name: String, val thumb: String?) : Dest
+    data class ClipUrl(val url: String) : Dest
+    data class PlaylistDownload(val playlistId: String) : Dest
+    /** YT-Music online album detail screen (Spotify-style). */
+    /** Online album / playlist / curated featured tile detail screen.
+     *  All three are PlayableCollection so a single screen handles them. */
+    data class OnlineCollection(val collection: com.beatdrop.kt.youtube.PlayableCollection) : Dest
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Spotify Glassmorphism Main Scaffold
+// Background: #050505 + ambient glow (rgba(30,80,200,.12))
+// Accent: #21FF6B (Spotify Green)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun MainScaffold(vm: PlayerViewModel) {
+    val C = LocalAppColors.current
+    val context = LocalContext.current
+    var tab by rememberSaveable { mutableStateOf("discover") }
+    val stack = remember { mutableStateListOf<Dest>() }
+    val currentDest: Dest = stack.lastOrNull() ?: Dest.Tabs
+    fun push(d: Dest) { stack.add(d) }
+    fun pop() { if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) } // ✅ UX3: pop() handled by AnimatedContent (improved transition spec)
+    BackHandler(enabled = stack.isNotEmpty()) { pop() }
+
+    // ── Privacy / Terms acceptance gate ───────────────────────────────
+    // First-time prompt the moment the user lands on Discover / Search /
+    // Radio (the network-touching tabs). Local-only tabs (Library,
+    // Settings) don't trigger it. Acceptance is persisted as the
+    // currentVersionCode in Prefs.termsAcceptedVersion so this shows
+    // exactly once per app version that changes the policy.
+    val currentVersionCode = remember {
+        runCatching {
+            val pm = context.packageManager
+            val info = pm.getPackageInfo(context.packageName, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode.toInt()
+            else @Suppress("DEPRECATION") info.versionCode
+        }.getOrDefault(0)
+    }
+    var termsLoaded by rememberSaveable { mutableStateOf(false) }
+    var needsTerms  by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!termsLoaded) {
+            val accepted = vm.termsAcceptedVersion()
+            needsTerms = accepted < currentVersionCode
+            termsLoaded = true
         }
     }
+    // Tab pre-warm — kick off the data fetchers the moment a tab is
+    // selected, even before the screen composable runs its own
+    // LaunchedEffect. Cuts perceived 'tab opens, then content appears'
+    // latency by ~50-150 ms because by the time the AnimatedContent
+    // crossfade lands the data is already in the StateFlow.
+    LaunchedEffect(tab) {
+        when (tab) {
+            "discover" -> {
+                vm.getDiscoverData()
+                vm.loadMadeForYou()
+            }
+            "search"   -> { /* network not auto-issued; user types to trigger */ }
+            "radio"    -> { /* RadioScreen reads from local library — nothing to pre-warm */ }
+        }
+    }
+
+    val touchedNetworkTab = tab == "discover" || tab == "search"
+    if (needsTerms && touchedNetworkTab) {
+        com.beatdrop.kt.ui.components.TermsSheet(
+            onAccept = {
+                vm.acceptTerms(currentVersionCode)
+                needsTerms = false
+            },
+        )
+    }
+
+    val current    by vm.current.collectAsState()
+    val isPlaying  by vm.isPlaying.collectAsState()
+    val pos        by vm.position.collectAsState()
+    val dur        by vm.duration.collectAsState()
+
+    val artColor = com.beatdrop.kt.ui.components.rememberArtworkColor(current?.artworkUri)
+    val bgColors = if (C.isDark) {
+        listOf(
+            artColor.copy(alpha = 0.16f),
+            Color(0xFF030305),
+            Color(0xFF000000),
+        )
+    } else {
+        listOf(
+            artColor.copy(alpha = 0.12f),
+            Color(0xFFF7F7F9),
+            Color(0xFFEFEDF2),
+        )
+    }
+
+    val tilt = com.beatdrop.kt.ui.components.rememberDeviceTilt()
+    val hapticsOn by vm.haptics.collectAsState()
+    val hazeState = remember { HazeState() }
+
+    androidx.compose.runtime.CompositionLocalProvider(
+        com.beatdrop.kt.ui.components.LocalHapticsEnabled provides hapticsOn,
+        LocalDeviceTilt provides tilt,
+        LocalHazeState provides hazeState,
+    ) {
+    Surface(Modifier.fillMaxSize(), color = Color.Transparent) {
+        Box(Modifier.fillMaxSize().haze(state = hazeState)) {
+            // ── Global blurred artwork background ────────────────────────────
+            if (current != null) {
+                AsyncImage(
+                    model  = coil.request.ImageRequest.Builder(LocalContext.current)
+                        .data(current?.artworkUri)
+                        .crossfade(true)
+                        .size(512)
+                        .build(),
+                    contentDescription = null,
+                    contentScale       = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                renderEffect = android.graphics.RenderEffect
+                                    .createBlurEffect(150f, 150f, android.graphics.Shader.TileMode.CLAMP)
+                                    .asComposeRenderEffect()
+                            }
+                            alpha = if (C.isDark) 0.38f else 0.24f
+                        },
+                )
+            } else {
+                // Deep background with ambient glow (Spotify style)
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(bgColors)
+                        )
+                        .drawWithContent {
+                            drawContent()
+                            // Ambient background glow — adapts to theme (Spotify blue=cyan in dark, purple in light)
+                            drawRect(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        if (C.isDark) Color(0x1E1E5080) else Color(0x141E50C8),  // dark: rgba(30,80,200,.12), light: rgba(30,80,200,.08)
+                                        Color.Transparent,
+                                    ),
+                                    center = Offset(size.width * 0.5f, size.height * 0.2f),
+                                    radius = size.width * 0.8f,
+                                ),
+                            )
+                        },
+                )
+            }
+
+            // ── Global translucent dark scrim + pink ambient glow ────────────
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        if (C.isDark) Color(0xF2000000)
+                        else Color(0xE8FFFFFF),
+                    )
+                    .drawWithContent {
+                        drawContent()
+                        if (C.isDark) {
+                            // Soft Apple-pink ambient (top-left)
+                            drawRect(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        C.accent.copy(alpha = 0.10f),
+                                        Color.Transparent,
+                                    ),
+                                    center = Offset(size.width * 0.15f, size.height * 0.08f),
+                                    radius = size.maxDimension * 0.55f,
+                                ),
+                            )
+                            // Cool navy ambient (bottom-right)
+                            drawRect(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        Color(0xFF2850A0).copy(alpha = 0.07f),
+                                        Color.Transparent,
+                                    ),
+                                    center = Offset(size.width * 0.88f, size.height * 0.88f),
+                                    radius = size.maxDimension * 0.55f,
+                                ),
+                            )
+                        }
+                    }
+                    .specularHighlight(
+                        tilt,
+                        intensity = if (C.isDark) 0.03f else 0.04f,
+                        radius    = 1200f,
+                    ),
+            )
+
+            // ── Animated screen transitions ──────────────────────────────────
+            AnimatedContent(
+                targetState = currentDest,
+                transitionSpec = {
+                    // Tighter durations matching Spotify-iOS feel:
+                    //   tab-swap:  140/110 ms (was 240/200)
+                    //   push:      220/160/160 in, 130/140 out (was 340/300/300, 200/220)
+                    //   pop:       130 in, 160/100 out          (was 180, 220/120)
+                    // Sub-200ms feels instant; sub-300ms feels snappy; over
+                    // 300ms feels deliberate-but-noticeable. Pushed
+                    // everything one tier down from 'deliberate' to 'snappy'.
+                    val openingNowPlaying = targetState == Dest.NowPlaying
+                    val closingNowPlaying = initialState == Dest.NowPlaying
+                    val isPush = targetState != Dest.Tabs && initialState == Dest.Tabs
+                    if (openingNowPlaying) {
+                        // MiniPlayer → NowPlaying: premium bottom-sheet expansion.
+                        // The screen rises from the dock with a small scale settle,
+                        // making the transition feel physically connected to the
+                        // floating MiniPlayer instead of a generic page push.
+                        (slideInVertically(tween(360, easing = FastOutSlowInEasing)) { it } +
+                            fadeIn(tween(180)) +
+                            scaleIn(tween(360, easing = FastOutSlowInEasing), initialScale = 0.94f)) togetherWith
+                            (fadeOut(tween(180)) + scaleOut(tween(220), targetScale = 0.985f))
+                    } else if (closingNowPlaying) {
+                        // NowPlaying → MiniPlayer: collapse back down to the dock.
+                        (fadeIn(tween(160)) + scaleIn(tween(240), initialScale = 0.985f)) togetherWith
+                            (slideOutVertically(tween(300, easing = FastOutSlowInEasing)) { it } +
+                                fadeOut(tween(180)) +
+                                scaleOut(tween(300), targetScale = 0.94f))
+                    } else if (targetState == Dest.Tabs && initialState == Dest.Tabs) {
+                        fadeIn(tween(140)) togetherWith fadeOut(tween(110))
+                    } else if (isPush) {
+                        (slideInHorizontally(tween(220)) { it / 4 } + fadeIn(tween(160)) + scaleIn(tween(160), initialScale = 0.97f)) togetherWith (fadeOut(tween(130)) + scaleOut(tween(140), targetScale = 0.99f))
+                    } else {
+                        fadeIn(tween(130)) togetherWith (slideOutHorizontally(tween(160)) { it } + fadeOut(tween(100)))
+                    }
+                },
+                label = "screen",
+            ) { dest ->
+                Box(Modifier.fillMaxSize().background(Color.Transparent)) {
+                    when (dest) {
+                        Dest.Tabs -> TabsHost(
+                            vm = vm, tab = tab, onTab = { tab = it },
+                            current = current, isPlaying = isPlaying, pos = pos, dur = dur,
+                            onOpenAlbum         = { a, ar -> push(Dest.Album(a, ar)) },
+                            onOpenArtist        = { push(Dest.Artist(it)) },
+                            onOpenLocalDiscover = { push(Dest.LocalDiscover) },
+                            onOpenPlaylists     = { push(Dest.Playlists) },
+                            onOpenStats         = { push(Dest.Stats) },
+                            onOpenSettings      = { push(Dest.Settings) },
+                            onOpenSearch        = { push(Dest.Search) },
+                            onExpandPlayer      = { push(Dest.NowPlaying) },
+                            onOpenEq            = { push(Dest.Eq) },
+                            onOpenDebug         = { push(Dest.DebugLog) },
+                            onOpenDownloads     = { push(Dest.Downloads) },
+                            onOpenTrending      = { push(Dest.Trending) },
+                            onOpenBrowser       = { push(Dest.Browser) },
+                            onOpenStorage       = { push(Dest.Storage) },
+                            onOpenPrivateFolder = { push(Dest.PrivateFolder) },
+                            onOpenOnlineCollection = { push(Dest.OnlineCollection(it)) },
+                        )
+                        is Dest.Album        -> AlbumScreen(vm, dest.name, dest.artist, onBack = { pop() }, onOpenArtist = { push(Dest.Artist(it)) })
+                        is Dest.Artist       -> ArtistScreen(vm, dest.name, onBack = { pop() })
+                        is Dest.Playlist     -> PlaylistDetailScreen(vm, dest.name, onBack = { pop() })
+                        Dest.Playlists       -> PlaylistsScreenHosted(vm, onBack = { pop() }, onOpen = { push(Dest.Playlist(it)) })
+                        Dest.Stats           -> StatsHosted(vm, onBack = { pop() })
+                        Dest.Settings        -> SettingsScreen(vm, onBack = { pop() }, onOpenEq = { push(Dest.Eq) }, onOpenDebug = { push(Dest.DebugLog) })
+                        Dest.LocalDiscover   -> LocalDiscoverScreen(vm, onBack = { pop() }, onOpenSearch = { push(Dest.Search) })
+                        Dest.Eq              -> EqScreen(onBack = { pop() })
+                        Dest.DebugLog        -> DebugLogScreen(vm, onBack = { pop() })
+                        Dest.Search          -> SearchScreen(
+                            vm,
+                            onExpandPlayer = { push(Dest.NowPlaying) },
+                            onOpenOnlineCollection = { push(Dest.OnlineCollection(it)) },
+                            // Entered via Discover → online-only catalog.
+                            mode = com.beatdrop.kt.ui.screens.SearchMode.ONLINE_ONLY,
+                        )
+                        Dest.NowPlaying      -> NowPlayingScreen(vm, onCollapse = { pop() }, onOpenQueue = { push(Dest.Queue) })
+                        Dest.Queue           -> QueueScreen(vm, onClose = { pop() })
+                        Dest.Downloads       -> com.beatdrop.kt.ui.screens.DownloadsScreen(vm, onBack = { pop() })
+                        Dest.Trending        -> com.beatdrop.kt.ui.screens.TrendingScreen(vm, onExpandPlayer = { push(Dest.NowPlaying) }, onBack = { pop() })
+                        Dest.Browser         -> com.beatdrop.kt.ui.screens.BrowserScreen(
+                            onVideoDetected = { url, title ->
+                                vm.playOnlineByUrl(url)
+                                push(Dest.NowPlaying)
+                            },
+                            onBack = { pop() },
+                        )
+                        Dest.Storage         -> com.beatdrop.kt.ui.screens.StorageScreen(onBack = { pop() })
+                        Dest.PrivateFolder   -> com.beatdrop.kt.ui.screens.PrivateFolderScreen(
+                            savedPin = vm.privatePin.collectAsState().value,
+                            onSetPin = { vm.setPrivatePin(it) },
+                            onBack = { pop() },
+                        )
+                        is Dest.VideoPlayer  -> com.beatdrop.kt.ui.screens.VideoPlayerScreen(
+                            vm = vm, videoPath = dest.path, title = dest.title, onBack = { pop() },
+                        )
+                        is Dest.Channel      -> com.beatdrop.kt.ui.screens.ChannelScreen(
+                            vm = vm, channelId = dest.channelId, channelName = dest.name,
+                            channelThumb = dest.thumb, onExpandPlayer = { push(Dest.NowPlaying) }, onBack = { pop() },
+                        )
+                        is Dest.ClipUrl      -> com.beatdrop.kt.ui.screens.ClipUrlScreen(
+                            vm = vm, url = dest.url, onExpandPlayer = { push(Dest.NowPlaying) }, onBack = { pop() },
+                        )
+                        is Dest.PlaylistDownload -> com.beatdrop.kt.ui.screens.PlaylistDownloadScreen(
+                            vm = vm, playlistId = dest.playlistId, onBack = { pop() },
+                        )
+                        is Dest.OnlineCollection -> com.beatdrop.kt.ui.screens.OnlineAlbumScreen(
+                            vm = vm,
+                            collection = dest.collection,
+                            onBack = { pop() },
+                            onExpandPlayer = { push(Dest.NowPlaying) },
+                        )
+                    }
+                }
+            }
+
+            // ── Global bottom playback chrome ───────────────────────────────
+            // Lives outside TabsHost so active audio is reachable from every
+            // route (album, artist, downloads, queue, settings, etc.). On the
+            // tabs root it stacks MiniPlayer above the glass dock; on pushed
+            // screens it shows only the MiniPlayer above the gesture bar.
+            val hideDock = currentDest == Dest.NowPlaying || currentDest is Dest.VideoPlayer || currentDest == Dest.Browser
+            val showMiniPlayer = current != null && currentDest != Dest.NowPlaying
+            val showDock = !hideDock
+            if (showMiniPlayer || showDock) {
+                Column(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .drawBehind {
+                            val scrim = C.bg0
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    0f    to Color.Transparent,
+                                    0.25f to scrim.copy(alpha = 0.55f),
+                                    1f    to scrim,
+                                ),
+                            )
+                        }
+                        .navigationBarsPadding()
+                        .padding(bottom = 6.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    current?.takeIf { showMiniPlayer }?.let { t ->
+                        MiniPlayer(
+                            track = t,
+                            isPlaying = isPlaying,
+                            progress = if (dur > 0) pos.toFloat() / dur else 0f,
+                            onToggle = { vm.togglePlay() },
+                            onNext = { vm.next() },
+                            onPrev = { vm.prev() },
+                            onExpand = { push(Dest.NowPlaying) },
+                        )
+                    }
+                    if (showDock) {
+                        GlassTabBar2(rememberTabs(), tab) { onTab ->
+                            tab = onTab
+                            stack.clear()
+                        }
+                    }
+                }
+            }
+        }
+    }
+    } // CompositionLocalProvider(LocalHapticsEnabled)
+}
+
+@Composable
+private fun TabsHost(
+    vm: PlayerViewModel, tab: String, onTab: (String) -> Unit,
+    current: com.beatdrop.kt.data.Track?, isPlaying: Boolean, pos: Long, dur: Long,
+    onOpenAlbum: (String, String) -> Unit, onOpenArtist: (String) -> Unit,
+    onOpenLocalDiscover: () -> Unit, onOpenPlaylists: () -> Unit,
+    onOpenStats: () -> Unit, onOpenSettings: () -> Unit, onOpenSearch: () -> Unit, onExpandPlayer: () -> Unit,
+    onOpenEq: () -> Unit, onOpenDebug: () -> Unit,
+    onOpenDownloads: () -> Unit, onOpenTrending: () -> Unit,
+    onOpenBrowser: () -> Unit, onOpenStorage: () -> Unit, onOpenPrivateFolder: () -> Unit,
+    onOpenOnlineCollection: (com.beatdrop.kt.youtube.PlayableCollection) -> Unit,
+) {
+    val C = LocalAppColors.current
+    Box(Modifier.fillMaxSize().background(Color.Transparent)) {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f)) {
+                when (tab) {
+                    "library"  -> LibraryScreen(vm, onOpenAlbum = onOpenAlbum, onOpenArtist = onOpenArtist,
+                        onOpenLocalDiscover = onOpenLocalDiscover, onOpenPlaylists = onOpenPlaylists, onOpenStats = onOpenStats,
+                        onOpenDownloads = onOpenDownloads, onOpenSettings = onOpenSettings)
+                    "discover" -> DiscoverScreen(
+                        vm,
+                        onOpenSearch = onOpenSearch,
+                        onOpenDownloads = onOpenDownloads,
+                        onExpandPlayer = onExpandPlayer,
+                        onOpenCollection = onOpenOnlineCollection,
+                    )
+                    "search"   -> SearchScreen(
+                        vm,
+                        onExpandPlayer = onExpandPlayer,
+                        // Bottom tab → hybrid (local library + BeatDrop catalogue).
+                        mode = com.beatdrop.kt.ui.screens.SearchMode.HYBRID,
+                        // BUG FIX: previously omitted, so album taps from
+                        // the bottom-tab search were silent no-ops.
+                        onOpenOnlineCollection = onOpenOnlineCollection,
+                    )
+                    "radio"    -> RadioScreen(vm)
+                }
+            }
+        }
+
+        StatusBarGlassOverlay()
+    }
+}
+
+@Composable private fun PlaylistsScreenHosted(vm: PlayerViewModel, onBack: () -> Unit, onOpen: (String) -> Unit) = PlaylistsScreen(vm, onBack = onBack, onOpen = onOpen)
+@Composable private fun StatsHosted(vm: PlayerViewModel, onBack: () -> Unit) = StatsScreen(vm, onBack = onBack)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Status Bar Glass Overlay — Backdrop blur + rim light
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun StatusBarGlassOverlay() {
+    val C = LocalAppColors.current
+    val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    if (topPadding <= 0.dp) return
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(topPadding)
+            .background(
+                if (C.isDark) Color(0x30050505) else Color(0x30EEEEEE)
+            )
+            .drawWithContent {
+                drawContent()
+                // Bottom-edge rim light
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            if (C.isDark) Color(0x10FFFFFF) else Color(0x0A000000),
+                        ),
+                        startY = size.height * 0.6f,
+                        endY = size.height,
+                    ),
+                )
+            },
+    )
 }
