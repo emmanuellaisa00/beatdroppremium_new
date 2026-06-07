@@ -28,7 +28,12 @@ fun StorageScreen(onBack: () -> Unit) {
                         Text("Free: 28.6 GB", color = TextMedium, fontWeight = FontWeight.Medium)
                     }
                     Spacer(Modifier.height(12.dp))
-                    LinearProgressIndicator(progress = { 0.08f }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)), color = Accent, trackColor = SurfaceTile)
+                    LinearProgressIndicator(
+                        progress = { 0.08f },
+                        modifier = Modifier.fillMaxWidth().height(8.dp),
+                        color = Accent,
+                        trackColor = SurfaceTile,
+                    )
                     Spacer(Modifier.height(20.dp))
                     listOf(
                         Triple("Downloads", "1.8 GB", 0.75f),

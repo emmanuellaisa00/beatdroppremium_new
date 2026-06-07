@@ -137,8 +137,9 @@ fun PlaylistDownloadScreen(
             ) {
                 LinearProgressIndicator(
                     progress = { progress.coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
-                    color = Accent, trackColor = SurfaceTile,
+                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                    color = Accent,
+                    trackColor = SurfaceTile,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text("${(progress * 100).toInt().coerceIn(0, 100)}%", color = TextMedium, fontWeight = FontWeight.Bold)

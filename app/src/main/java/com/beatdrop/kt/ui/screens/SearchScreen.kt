@@ -285,7 +285,7 @@ fun SearchScreen(
                 modifier = Modifier.heightIn(max = 450.dp),
             ) {
                 items(SampleData.genres) { genre ->
-                    BrowseTile(genre.title, genre.tileIndex) { onOpenGenre(genre.title) }
+                    BrowseTile(label = genre.title, tileIndex = genre.tileIndex, onClick = { onOpenGenre(genre.title) })
                 }
             }
 
@@ -300,7 +300,7 @@ fun SearchScreen(
                 modifier = Modifier.heightIn(max = 250.dp),
             ) {
                 items(SampleData.browseAll) { genre ->
-                    BrowseTile(genre.title, genre.tileIndex) { onOpenOnlineCollection("browse_${genre.title}") }
+                    BrowseTile(label = genre.title, tileIndex = genre.tileIndex, onClick = { onOpenOnlineCollection("browse_${genre.title}") })
                 }
             }
             Spacer(Modifier.height(20.dp))

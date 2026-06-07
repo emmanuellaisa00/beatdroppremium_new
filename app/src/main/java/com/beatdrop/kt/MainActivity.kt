@@ -82,7 +82,7 @@ fun BeatDropApp() {
                 .padding(start = 10.dp, end = 10.dp, bottom = 100.dp)
                 .zIndex(3f),
         ) {
-            MiniPlayer("4×4", "Don Toliver", 1, 0.42f) {
+            MiniPlayer("4x4", "Don Toliver", 1, 0.42f) {
                 try {
                     navController.navigate(Screen.NowPlaying.route)
                 } catch (_: Exception) { }

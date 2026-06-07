@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -53,7 +54,7 @@ fun PlaylistsScreen(
                     }
                 }
             }
-            items(playlists, key = { it.first }) { (name, count) ->
+            itemsIndexed(playlists) { _, (name, count) ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().clickable { onOpen(name) }.padding(horizontal = 20.dp, vertical = 10.dp),
