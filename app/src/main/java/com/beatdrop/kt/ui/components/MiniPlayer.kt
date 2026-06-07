@@ -1,179 +1,210 @@
+/*
+ * BeatDrop Premium — Mini Player + Bottom Dock
+ * Matches HTML .mini and .dock components exactly.
+ */
+
 package com.beatdrop.kt.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import com.beatdrop.kt.data.Track
-import com.beatdrop.kt.ui.theme.LocalAppColors
-import kotlin.math.abs
+import com.beatdrop.kt.ui.theme.*
 
-/**
- * BeatDrop Mini Player — matches the HTML concept exactly:
- *   • 70 dp tall, radius 36, dark obsidian glass (same recipe as the dock)
- *   • Floats 14 dp above the dock, 20 dp horizontal insets
- *   • Circular album thumb on the left
- *   • Title (white) + artist (55% white) center
- *   • Devices/cast icon + plain white play triangle (no background fill)
- *   • Hairline pink progress line at the bottom edge
- */
+// ═══════════════════════════════════════════════════════════════════
+// MINI PLAYER
+// HTML: .mini (glass bar with cover, info, play button, progress)
+// ═══════════════════════════════════════════════════════════════════
+
 @Composable
 fun MiniPlayer(
-    track: Track,
+    trackName: String,
+    artistName: String,
+    coverIndex: Int,
     isPlaying: Boolean,
     progress: Float,
     onToggle: () -> Unit,
     onNext: () -> Unit,
     onPrev: () -> Unit,
     onExpand: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val C = LocalAppColors.current
-    val ctx = LocalContext.current
-
-    var dragX by remember { mutableStateOf(0f) }
-    var dragY by remember { mutableStateOf(0f) }
-    val animX by animateFloatAsState(dragX, label = "miniX")
-    val animY by animateFloatAsState(dragY.coerceAtMost(0f), label = "miniY")
-
-    val outerShape = RoundedCornerShape(36.dp)
+    val idx = safeGradientIndex(coverIndex, CoverGradients.size)
+    val (start, end) = CoverGradients[idx]
+    val shape = RoundedCornerShape(16.dp)
+    val glassBg = Color(0xB308060A) // rgba(8,6,10,0.70)
 
     Box(
-        Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(70.dp)
-            .padding(horizontal = 20.dp)
-            .graphicsLayer {
-                translationX = animX
-                translationY = animY
-            }
-            .premiumGlass(level = GlassLevel.Z3_MiniPlayer, shape = outerShape)
-            .pointerInput(track.id) {
-                detectDragGestures(
-                    onDragEnd = {
-                        when {
-                            dragX < -120f -> onNext()
-                            dragX >  120f -> onPrev()
-                            dragY < -100f -> onExpand()
-                        }
-                        dragX = 0f; dragY = 0f
-                    },
-                    onDragCancel = { dragX = 0f; dragY = 0f },
-                ) { change, amount ->
-                    change.consume()
-                    if (abs(amount.x) > abs(amount.y)) dragX += amount.x
-                    else dragY += amount.y
-                }
-            }
-            .pointerInput(Unit) { detectTapGestures(onTap = { onExpand() }) },
+            .padding(horizontal = 16.dp)
+            .clip(shape)
+            .background(glassBg)
+            .border(0.5.dp, Color.White.copy(alpha = 0.08f), shape)
+            .clickable(onClick = onExpand),
     ) {
-        Row(
-            Modifier
-                .fillMaxSize()
-                .padding(start = 8.dp, end = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Album art — circular
-            Box(
-                Modifier
-                    .size(54.dp)
-                    .clip(CircleShape)
-                    .background(C.bg3)
-                    .border(1.dp, Color.White.copy(alpha = 0.10f), CircleShape),
-                contentAlignment = Alignment.Center,
+        Column {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 4.dp),
             ) {
-                if (track.artworkUri != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(ctx)
-                            .data(track.artworkUri)
-                            .crossfade(true)
-                            .size(coil.size.Size(140, 140))
-                            .build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
+                // Cover art (40dp)
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Brush.linearGradient(listOf(start, end), 145f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Filled.MusicNote, null, tint = Color.White.copy(alpha = 0.90f), modifier = Modifier.size(18.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                // Track info
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = trackName,
+                        color = Color.White,
+                        fontWeight = FontWeight.W700,
+                        fontSize = 14.sp,
+                        maxLines = 1,
                     )
-                } else {
+                    Text(
+                        text = artistName,
+                        color = HtmlTokens.TextTertiary,
+                        fontWeight = FontWeight.W500,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                    )
+                }
+                // Cast icon
+                Icon(
+                    Icons.Filled.Cast,
+                    null,
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(20.dp).padding(end = 4.dp),
+                )
+                // Play/pause button
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onToggle),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Icon(
-                        imageVector = Ic.MusicNote,
-                        contentDescription = null,
-                        tint = C.text.copy(alpha = 0.55f),
-                        modifier = Modifier.size(22.dp),
+                        if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }
-
-            Spacer(Modifier.width(14.dp))
-
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = track.title,
-                    color = C.text,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontSize = 14.sp,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = track.artist,
-                    color = C.text.copy(alpha = 0.55f),
-                    fontSize = 11.5.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+            // Progress bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .padding(horizontal = 10.dp, vertical = 0.dp)
+                    .clip(RoundedCornerShape(1.dp))
+                    .background(Color.White.copy(alpha = 0.12.dp.value / 1.dp.value)),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(progress)
+                        .background(HtmlTokens.Accent),
                 )
             }
+            Spacer(Modifier.height(2.dp))
+        }
+    }
+}
 
-            // Devices/cast icon — subtle, monochrome
-            IconButton(onClick = onExpand, modifier = Modifier.size(38.dp)) {
-                Icon(
-                    imageVector = Ic.Airplay,
-                    contentDescription = null,
-                    tint = C.text.copy(alpha = 0.75f),
-                    modifier = Modifier.size(20.dp),
-                )
-            }
+// ═══════════════════════════════════════════════════════════════════
+// BOTTOM DOCK
+// HTML: .dock with 4 tabs (Home, Search, Library, Add)
+// ═══════════════════════════════════════════════════════════════════
 
-            // Play button — pure white triangle, NO background fill
-            IconButton(onClick = onToggle, modifier = Modifier.size(42.dp)) {
-                Icon(
-                    imageVector = if (isPlaying) Ic.TransportPause else Ic.TransportPlay,
-                    contentDescription = null,
-                    tint = C.text,
-                    modifier = Modifier.size(22.dp),
+data class TabSpec(
+    val name: String,
+    val icon: @Composable () -> Unit,
+)
+
+@Composable
+fun BottomDock(
+    tabs: List<TabSpec>,
+    activeIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(28.dp)
+    Row(
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(shape)
+            .background(Color(0xB308060A))
+            .border(0.5.dp, Color.White.copy(alpha = 0.08f), shape)
+            .padding(vertical = 8.dp),
+    ) {
+        tabs.forEachIndexed { index, tab ->
+            val active = index == activeIndex
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { onTabSelected(index) },
+            ) {
+                // Active indicator circle
+                Box(
+                    modifier = Modifier
+                        .size(if (active) 40.dp else 32.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (active) HtmlTokens.Accent.copy(alpha = 0.15f) else Color.Transparent,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CompositionLocalProvider(
+                        LocalContentColor provides
+                            if (active) HtmlTokens.Accent else Color.White.copy(alpha = 0.60f)
+                    ) {
+                        tab.icon()
+                    }
+                }
+                Text(
+                    text = tab.name,
+                    color = if (active) HtmlTokens.Accent else Color.White.copy(alpha = 0.45f),
+                    fontWeight = if (active) FontWeight.W700 else FontWeight.W600,
+                    fontSize = 10.sp,
+                    letterSpacing = 0.02.sp,
                 )
             }
         }
-
-        // Hairline progress at the bottom — subtle pink accent
-        Box(
-            Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = 36.dp)
-                .fillMaxWidth(progress.coerceIn(0f, 1f))
-                .height(1.5.dp)
-                .background(C.accent.copy(alpha = 0.75f))
-        )
     }
 }
