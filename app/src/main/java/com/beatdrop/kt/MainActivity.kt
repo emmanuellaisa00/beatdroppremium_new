@@ -82,11 +82,17 @@ fun BeatDropApp() {
                 .padding(start = 10.dp, end = 10.dp, bottom = 100.dp)
                 .zIndex(3f),
         ) {
-            MiniPlayer("4x4", "Don Toliver", 1, 0.42f) {
-                try {
-                    navController.navigate(Screen.NowPlaying.route)
-                } catch (_: Exception) { }
-            }
+            MiniPlayer(
+                trackName = "4x4",
+                artistName = "Don Toliver",
+                coverIndex = 1,
+                progress = 0.42f,
+                onClick = {
+                    try {
+                        navController.navigate(Screen.NowPlaying.route)
+                    } catch (_: Exception) { }
+                },
+            )
         }
 
         // Bottom dock

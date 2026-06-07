@@ -54,12 +54,14 @@ fun PlaylistsScreen(
                     }
                 }
             }
-            itemsIndexed(playlists) { _, (name, count) ->
+            itemsIndexed(playlists) { index, pair ->
+                val name = pair.first
+                val count = pair.second
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().clickable { onOpen(name) }.padding(horizontal = 20.dp, vertical = 10.dp),
                 ) {
-                    Box(modifier = Modifier.size(52.dp).background(CoverGradients.get(playlists.indexOf(name) + 1), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.size(52.dp).background(CoverGradients.get(index + 1), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
                         Icon(Icons.Filled.QueueMusic, null, tint = Color.White.copy(alpha = 0.80f), modifier = Modifier.size(24.dp))
                     }
                     Spacer(Modifier.width(14.dp))
