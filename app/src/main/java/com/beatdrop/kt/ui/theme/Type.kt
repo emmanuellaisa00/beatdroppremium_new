@@ -6,7 +6,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.beatdrop.kt.R
+// import com.beatdrop.kt.R // auto-generated, not needed until fonts are added
 
 // Manrope font family matching the premium HTML
 // val Manrope = FontFamily(
